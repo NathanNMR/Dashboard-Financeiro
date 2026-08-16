@@ -199,6 +199,11 @@ function Dashboard() {
     [expensesByCategory]
   );
 
+  const topCategory = useMemo(() => {
+    if (categoryPieData.length === 0) return null;
+    return categoryPieData.reduce((max, curr) => (curr.value > max.value ? curr : max));
+  }, [categoryPieData]);
+
   const monthlyData = useMemo(() => {
     const acc: Record<string, { month: string; income: number; expense: number }> = {};
     transactions.forEach((t) => {
@@ -246,7 +251,7 @@ function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         <DashboardHeader onImportCSV={handleFileUpload} onExportCSV={handleExportCSV} />
 
-        <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} />
+        <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} topCategory={topCategory} />
 
         <BillsManager bills={bills} onAddBill={handleAddBill} onSettleBill={handleSettleBill} onDeleteBill={handleDeleteBill} />
 

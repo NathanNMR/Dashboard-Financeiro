@@ -1,5 +1,6 @@
 import { Budget } from "@/lib/types";
 import { formatCurrency } from "@/lib/finance";
+import { CATEGORY_ICONS } from "@/lib/constants";
 import { EmptyState } from "./EmptyState";
 
 interface BudgetGoalsProps {
@@ -8,7 +9,11 @@ interface BudgetGoalsProps {
 }
 
 export function BudgetGoals({ budgets, spentByCategory }: BudgetGoalsProps) {
-  const categories = Object.keys(budgets);
+  const categories = Object.keys(budgets).sort((a, b) => {
+    const pctA = budgets[a] > 0 ? (spentByCategory[a] || 0) / budgets[a] : 0;
+    const pctB = budgets[b] > 0 ? (spentByCategory[b] || 0) / budgets[b] : 0;
+    return pctB - pctA;
+  });
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
@@ -29,7 +34,9 @@ export function BudgetGoals({ budgets, spentByCategory }: BudgetGoalsProps) {
             return (
               <div key={cat} className="space-y-1">
                 <div className="flex justify-between text-xs font-medium">
-                  <span className="text-slate-300">{cat}</span>
+                  <span className="text-slate-300">
+                    {CATEGORY_ICONS[cat] ?? ""} {cat}
+                  </span>
                   <span className={isOver ? "text-rose-400 font-bold" : "text-slate-400"}>
                     {formatCurrency(spent)} / {formatCurrency(limit)} ({percentage}%)
                   </span>

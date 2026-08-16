@@ -19,14 +19,28 @@ export function formatCurrency(value: number): string {
 
 export function categorizeTransaction(description: string): string {
   const desc = description.toLowerCase();
-  if (desc.includes("salario") || desc.includes("salário") || desc.includes("pix recebido") || desc.includes("ted") || desc.includes("freelance"))
+
+  if (desc.includes("salario") || desc.includes("salário") || desc.includes("pix recebido") || desc.includes("ted"))
     return "Salário";
-  if (desc.includes("supermercado") || desc.includes("mercado") || desc.includes("padaria") || desc.includes("ifood"))
+  if (desc.includes("freelance") || desc.includes("bico") || desc.includes("comissão") || desc.includes("comissao"))
+    return "Freelance/Extra";
+  if (desc.includes("fatura") || desc.includes("cartao") || desc.includes("cartão") || desc.includes("nubank") || desc.includes("visa") || desc.includes("mastercard"))
+    return "Cartão de Crédito";
+  if (desc.includes("supermercado") || desc.includes("mercado") || desc.includes("padaria") || desc.includes("ifood") || desc.includes("restaurante") || desc.includes("lanchonete"))
     return "Alimentação";
-  if (desc.includes("uber") || desc.includes("posto") || desc.includes("gasolina") || desc.includes("metro") || desc.includes("metrô"))
+  if (desc.includes("uber") || desc.includes("99") || desc.includes("posto") || desc.includes("gasolina") || desc.includes("combustivel") || desc.includes("combustível") || desc.includes("metro") || desc.includes("metrô") || desc.includes("estacionamento"))
     return "Transporte";
-  if (desc.includes("aluguel") || desc.includes("condominio") || desc.includes("condomínio") || desc.includes("luz") || desc.includes("internet"))
+  if (desc.includes("aluguel") || desc.includes("condominio") || desc.includes("condomínio") || desc.includes("luz") || desc.includes("energia") || desc.includes("agua") || desc.includes("água") || desc.includes("internet") || desc.includes("iptu"))
     return "Moradia";
+  if (desc.includes("farmacia") || desc.includes("farmácia") || desc.includes("hospital") || desc.includes("plano de saude") || desc.includes("plano de saúde") || desc.includes("medico") || desc.includes("médico") || desc.includes("dentista") || desc.includes("academia"))
+    return "Saúde";
+  if (desc.includes("escola") || desc.includes("faculdade") || desc.includes("curso") || desc.includes("mensalidade escolar") || desc.includes("livro") || desc.includes("udemy"))
+    return "Educação";
+  if (desc.includes("cinema") || desc.includes("show") || desc.includes("bar ") || desc.includes("balada") || desc.includes("viagem") || desc.includes("passeio") || desc.includes("jogo"))
+    return "Lazer";
+  if (desc.includes("netflix") || desc.includes("spotify") || desc.includes("prime video") || desc.includes("disney") || desc.includes("hbo") || desc.includes("assinatura") || desc.includes("mensalidade"))
+    return "Assinaturas";
+
   return "Outros";
 }
 

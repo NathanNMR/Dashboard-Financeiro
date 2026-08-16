@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Transaction } from "@/lib/types";
 import { formatCurrency } from "@/lib/finance";
+import { CATEGORY_ICONS } from "@/lib/constants";
 import { TextInput, SelectInput } from "./FormField";
 import { CategoryOptions } from "./CategoryOptions";
 
@@ -15,6 +17,8 @@ interface TransactionsTableProps {
   onDelete: (t: Transaction) => void;
 }
 
+type SortKey = "date" | "amount";
+
 export function TransactionsTable({
   transactions,
   filterCategory,
@@ -24,6 +28,32 @@ export function TransactionsTable({
   onEdit,
   onDelete,
 }: TransactionsTableProps) {
+  const [filterType, setFilterType] = useState<"All" | "income" | "expense">("All");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDesc, setSortDesc] = useState(true);
+
+  const visibleTransactions = useMemo(() => {
+    const filtered = filterType === "All" ? transactions : transactions.filter((t) => t.type === filterType);
+    const sorted = [...filtered].sort((a, b) => {
+      const cmp = sortKey === "date" ? a.date.localeCompare(b.date) : a.amount - b.amount;
+      return sortDesc ? -cmp : cmp;
+    });
+    return sorted;
+  }, [transactions, filterType, sortKey, sortDesc]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDesc((d) => !d);
+    } else {
+      setSortKey(key);
+      setSortDesc(true);
+    }
+  };
+
+  const SortArrow = ({ active }: { active: boolean }) => (
+    <span className={`inline-block ml-1 transition ${active ? "opacity-100" : "opacity-0"}`}>{sortDesc ? "↓" : "↑"}</span>
+  );
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col space-y-4">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -35,8 +65,18 @@ export function TransactionsTable({
             placeholder="Buscar descrição..."
             value={filterSearch}
             onChange={(e) => onFilterSearchChange(e.target.value)}
-            className="sm:w-56"
+            className="sm:w-52"
           />
+          <SelectInput
+            aria-label="Filtrar por tipo"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as "All" | "income" | "expense")}
+            className="sm:w-36"
+          >
+            <option value="All">Receitas e Despesas</option>
+            <option value="income">Só Receitas</option>
+            <option value="expense">Só Despesas</option>
+          </SelectInput>
           <SelectInput
             aria-label="Filtrar por categoria"
             value={filterCategory}
@@ -52,32 +92,38 @@ export function TransactionsTable({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-slate-400">
-              <th className="py-3 px-4">Data</th>
+            <tr className="border-b border-slate-800 text-slate-400 select-none">
+              <th className="py-3 px-4 cursor-pointer hover:text-slate-200" onClick={() => toggleSort("date")}>
+                Data
+                <SortArrow active={sortKey === "date"} />
+              </th>
               <th className="py-3 px-4">Descrição</th>
               <th className="py-3 px-4">Categoria</th>
-              <th className="py-3 px-4 text-right">Valor</th>
+              <th className="py-3 px-4 text-right cursor-pointer hover:text-slate-200" onClick={() => toggleSort("amount")}>
+                Valor
+                <SortArrow active={sortKey === "amount"} />
+              </th>
               <th className="py-3 px-4 text-center">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
-            {transactions.length === 0 ? (
+            {visibleTransactions.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-6 text-center text-slate-500">
                   Nenhuma transação encontrada.
                 </td>
               </tr>
             ) : (
-              transactions.map((t) => (
+              visibleTransactions.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-800/40 transition">
-                  <td className="py-3 px-4 text-slate-400">{t.date}</td>
+                  <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{t.date}</td>
                   <td className="py-3 px-4 font-medium text-slate-200">{t.description}</td>
                   <td className="py-3 px-4">
-                    <span className="bg-slate-800 text-cyan-300 text-xs px-2.5 py-1 rounded-full border border-slate-700">
-                      {t.category}
+                    <span className="bg-slate-800 text-cyan-300 text-xs px-2.5 py-1 rounded-full border border-slate-700 whitespace-nowrap">
+                      {CATEGORY_ICONS[t.category] ?? ""} {t.category}
                     </span>
                   </td>
-                  <td className={`py-3 px-4 text-right font-semibold ${t.type === "income" ? "text-emerald-400" : "text-rose-400"}`}>
+                  <td className={`py-3 px-4 text-right font-semibold whitespace-nowrap ${t.type === "income" ? "text-emerald-400" : "text-rose-400"}`}>
                     {t.type === "income" ? "+ " : "- "}
                     {formatCurrency(t.amount)}
                   </td>
@@ -101,6 +147,12 @@ export function TransactionsTable({
           </tbody>
         </table>
       </div>
+
+      {visibleTransactions.length > 0 && (
+        <p className="text-xs text-slate-500 pt-1">
+          Exibindo {visibleTransactions.length} de {transactions.length} transações.
+        </p>
+      )}
     </div>
   );
 }
