@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Transaction } from "@/lib/types";
 import { formatCurrency } from "@/lib/finance";
-import { CATEGORY_ICONS } from "@/lib/constants";
+import { CATEGORY_ICONS, RECURRENCE_LABELS } from "@/lib/constants";
 import { TextInput, SelectInput } from "./FormField";
 import { CategoryOptions } from "./CategoryOptions";
 
@@ -14,7 +14,7 @@ interface TransactionsTableProps {
   onFilterCategoryChange: (value: string) => void;
   onFilterSearchChange: (value: string) => void;
   onEdit: (t: Transaction) => void;
-  onDelete: (t: Transaction) => void;
+  onDelete: (t: Transaction, scope: "single" | "series") => void;
 }
 
 type SortKey = "date" | "amount";
@@ -117,7 +117,16 @@ export function TransactionsTable({
               visibleTransactions.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-800/40 transition">
                   <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{t.date}</td>
-                  <td className="py-3 px-4 font-medium text-slate-200">{t.description}</td>
+                  <td className="py-3 px-4 font-medium text-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span>{t.description}</span>
+                      {t.recurrence && t.recurrence !== "none" && (
+                        <span className="text-[10px] font-semibold bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                          🔁 {RECURRENCE_LABELS[t.recurrence]}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="py-3 px-4">
                     <span className="bg-slate-800 text-cyan-300 text-xs px-2.5 py-1 rounded-full border border-slate-700 whitespace-nowrap">
                       {CATEGORY_ICONS[t.category] ?? ""} {t.category}
@@ -135,11 +144,20 @@ export function TransactionsTable({
                       Editar
                     </button>
                     <button
-                      onClick={() => onDelete(t)}
+                      onClick={() => onDelete(t, "single")}
                       className="text-rose-400 hover:text-rose-300 text-xs bg-rose-950/40 border border-rose-900/50 px-2.5 py-1 rounded-lg transition"
                     >
                       Excluir
                     </button>
+                    {t.recurrenceGroupId && (
+                      <button
+                        onClick={() => onDelete(t, "series")}
+                        className="text-slate-500 hover:text-rose-400 text-[11px] underline decoration-dotted transition"
+                        title="Remove esta e todas as outras ocorrências desta série recorrente"
+                      >
+                        excluir série
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

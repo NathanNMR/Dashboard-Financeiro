@@ -45,6 +45,11 @@ export const CATEGORY_ICONS: Record<string, string> = {
   Outros: "📦",
 };
 
+export const RECURRENCE_LABELS: Record<string, string> = {
+  monthly: "Mensal",
+  yearly: "Anual",
+};
+
 export const STORAGE_KEYS = {
   transactions: "smartfinance_transactions",
   bills: "smartfinance_bills",

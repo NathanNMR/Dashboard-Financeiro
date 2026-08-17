@@ -1,4 +1,39 @@
-import { Bill } from "./types";
+import { Bill, Recurrence, Transaction } from "./types";
+
+/** Quantas ocorrências futuras gerar automaticamente ao marcar como recorrente */
+const RECURRENCE_HORIZON: Record<Exclude<Recurrence, "none">, number> = {
+  monthly: 12, // cobre os próximos 12 meses
+  yearly: 5, // cobre os próximos 5 anos
+};
+
+/**
+ * Gera as ocorrências de uma transação recorrente (a original + as futuras),
+ * todas compartilhando o mesmo recurrenceGroupId para poderem ser
+ * identificadas e removidas em conjunto depois.
+ */
+export function generateRecurringOccurrences(
+  base: Omit<Transaction, "id" | "recurrenceGroupId">,
+  recurrence: Exclude<Recurrence, "none">
+): Omit<Transaction, "id">[] {
+  const groupId = generateId("series");
+  const count = RECURRENCE_HORIZON[recurrence];
+  const occurrences: Omit<Transaction, "id">[] = [];
+  const baseDate = new Date(base.date + "T00:00:00");
+
+  for (let i = 0; i < count; i++) {
+    const d = new Date(baseDate);
+    if (recurrence === "monthly") d.setMonth(d.getMonth() + i);
+    else d.setFullYear(d.getFullYear() + i);
+
+    occurrences.push({
+      ...base,
+      date: d.toISOString().substring(0, 10),
+      recurrence,
+      recurrenceGroupId: groupId,
+    });
+  }
+  return occurrences;
+}
 
 /** Gera um id único e estável, com fallback para navegadores sem crypto.randomUUID */
 export function generateId(prefix: string): string {

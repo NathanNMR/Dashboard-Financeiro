@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Transaction } from "@/lib/types";
+import { Recurrence, Transaction } from "@/lib/types";
 import { FieldWrapper, TextInput, SelectInput } from "./FormField";
 import { CategoryOptions } from "./CategoryOptions";
 
 interface TransactionFormProps {
   editingTransaction: Transaction | null;
-  onSave: (data: Omit<Transaction, "id">) => void;
+  onSave: (data: Omit<Transaction, "id">, recurrence: Recurrence) => void;
   onCancelEdit: () => void;
 }
 
@@ -19,6 +19,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
   const [date, setDate] = useState(todayISO);
   const [type, setType] = useState<"income" | "expense">("expense");
   const [category, setCategory] = useState("Alimentação");
+  const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
       setDate(editingTransaction.date);
       setType(editingTransaction.type);
       setCategory(editingTransaction.category);
+      setRecurrence("none");
       setError(null);
     }
   }, [editingTransaction]);
@@ -36,6 +38,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
     setDesc("");
     setAmount("");
     setCategory("Alimentação");
+    setRecurrence("none");
     setError(null);
   };
 
@@ -47,7 +50,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
       return;
     }
     setError(null);
-    onSave({ description: desc.trim(), amount: parsedAmount, date, type, category });
+    onSave({ description: desc.trim(), amount: parsedAmount, date, type, category }, recurrence);
     resetForm();
   };
 
@@ -94,7 +97,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
             />
           </FieldWrapper>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <FieldWrapper label="Data" htmlFor="tx-date">
             <TextInput id="tx-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </FieldWrapper>
@@ -109,7 +112,27 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
               <CategoryOptions />
             </SelectInput>
           </FieldWrapper>
+          <FieldWrapper label="Repetir" htmlFor="tx-recurrence">
+            <SelectInput
+              id="tx-recurrence"
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value as Recurrence)}
+              disabled={!!editingTransaction}
+              title={editingTransaction ? "Recorrência não pode ser alterada ao editar uma ocorrência" : undefined}
+            >
+              <option value="none">Não repetir</option>
+              <option value="monthly">🔁 Mensal</option>
+              <option value="yearly">🔁 Anual</option>
+            </SelectInput>
+          </FieldWrapper>
         </div>
+        {recurrence !== "none" && !editingTransaction && (
+          <p className="text-xs text-cyan-400 bg-cyan-950/30 border border-cyan-900/40 rounded-lg px-3 py-2">
+            {recurrence === "monthly"
+              ? "Serão criadas automaticamente 12 ocorrências mensais a partir desta data."
+              : "Serão criadas automaticamente 5 ocorrências anuais a partir desta data."}
+          </p>
+        )}
         {error && <p className="text-rose-400 text-xs">{error}</p>}
         <button
           type="submit"

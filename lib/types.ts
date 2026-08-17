@@ -1,3 +1,5 @@
+export type Recurrence = "none" | "monthly" | "yearly";
+
 export interface Transaction {
   id: string;
   date: string; // YYYY-MM-DD
@@ -5,6 +7,9 @@ export interface Transaction {
   amount: number;
   category: string;
   type: "income" | "expense";
+  recurrence?: Recurrence;
+  /** Agrupa todas as ocorrências geradas a partir da mesma transação recorrente */
+  recurrenceGroupId?: string;
 }
 
 export interface Budget {

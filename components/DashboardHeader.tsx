@@ -2,10 +2,10 @@ import { ChangeEvent } from "react";
 
 interface DashboardHeaderProps {
   onImportCSV: (e: ChangeEvent<HTMLInputElement>) => void;
-  onExportCSV: () => void;
+  onExportImage: () => void;
 }
 
-export function DashboardHeader({ onImportCSV, onExportCSV }: DashboardHeaderProps) {
+export function DashboardHeader({ onImportCSV, onExportImage }: DashboardHeaderProps) {
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-6">
       <div>
@@ -22,10 +22,10 @@ export function DashboardHeader({ onImportCSV, onExportCSV }: DashboardHeaderPro
           <input type="file" accept=".csv" onChange={onImportCSV} className="hidden" />
         </label>
         <button
-          onClick={onExportCSV}
-          className="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition shadow"
+          onClick={onExportImage}
+          className="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition shadow flex items-center gap-1.5"
         >
-          Exportar CSV
+          🖼️ Exportar Imagem
         </button>
       </div>
     </header>

@@ -1,17 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bill, Budget, Transaction } from "@/lib/types";
+import { Bill, Budget, Recurrence, Transaction } from "@/lib/types";
 import { initialBills, initialBudgets, initialTransactions, STORAGE_KEYS } from "@/lib/constants";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
   calculateBillCurrentAmount,
   calculateLinearRegression,
   categorizeTransaction,
-  csvEscape,
   generateId,
+  generateRecurringOccurrences,
   parseCsvLine,
 } from "@/lib/finance";
+import { downloadDataUrl, renderDashboardImage } from "@/lib/imageExport";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { DashboardHeader } from "@/components/DashboardHeader";
@@ -43,27 +44,44 @@ function Dashboard() {
   );
 
   // --- Transações ---
-  const handleSaveTransaction = (data: Omit<Transaction, "id">) => {
+  const handleSaveTransaction = (data: Omit<Transaction, "id">, recurrence: Recurrence) => {
     if (editingId) {
       setTransactions((prev) => prev.map((t) => (t.id === editingId ? { ...t, ...data } : t)));
       setEditingId(null);
       notify("Transação atualizada com sucesso.", "success");
+      return;
+    }
+
+    if (recurrence !== "none") {
+      const occurrences = generateRecurringOccurrences(data, recurrence);
+      const newTransactions = occurrences.map((occ) => ({ id: generateId("recur"), ...occ }));
+      setTransactions((prev) => [...newTransactions, ...prev]);
+      notify(`${newTransactions.length} ocorrências ${recurrence === "monthly" ? "mensais" : "anuais"} adicionadas.`, "success");
     } else {
       setTransactions((prev) => [{ id: generateId("manual"), ...data }, ...prev]);
       notify("Transação adicionada.", "success");
     }
   };
 
-  const handleDeleteTransaction = async (t: Transaction) => {
+  const handleDeleteTransaction = async (t: Transaction, scope: "single" | "series") => {
+    const isSeries = scope === "series" && !!t.recurrenceGroupId;
     const ok = await confirm({
-      title: "Excluir transação?",
-      description: `"${t.description}" será removida permanentemente do extrato.`,
+      title: isSeries ? "Excluir série recorrente?" : "Excluir transação?",
+      description: isSeries
+        ? `Todas as ocorrências de "${t.description}" (passadas e futuras) serão removidas permanentemente.`
+        : `"${t.description}" será removida permanentemente do extrato.`,
       confirmLabel: "Excluir",
     });
     if (!ok) return;
-    setTransactions((prev) => prev.filter((tx) => tx.id !== t.id));
+
+    if (isSeries) {
+      setTransactions((prev) => prev.filter((tx) => tx.recurrenceGroupId !== t.recurrenceGroupId));
+      notify("Série recorrente excluída.", "info");
+    } else {
+      setTransactions((prev) => prev.filter((tx) => tx.id !== t.id));
+      notify("Transação excluída.", "info");
+    }
     if (editingId === t.id) setEditingId(null);
-    notify("Transação excluída.", "info");
   };
 
   // --- Contas / Compromissos ---
@@ -154,17 +172,18 @@ function Dashboard() {
     e.target.value = ""; // permite reimportar o mesmo arquivo depois
   };
 
-  const handleExportCSV = () => {
-    const header = "Data,Descricao,Categoria,Tipo,Valor";
-    const rows = transactions.map((t) => [t.date, csvEscape(t.description), t.category, t.type, t.amount].join(","));
-    const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].join("\n");
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "relatorio_financeiro.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    notify("Relatório exportado.", "success");
+  const handleExportImage = () => {
+    const now = new Date();
+    const periodLabel = `Relatório gerado em ${now.toLocaleDateString("pt-BR")} · ${transactions.length} transações`;
+    const dataUrl = renderDashboardImage({
+      totalIncome,
+      totalExpense,
+      balance,
+      categoryBreakdown: categoryPieData,
+      periodLabel,
+    });
+    downloadDataUrl(dataUrl, `relatorio_financeiro_${now.toISOString().substring(0, 10)}.png`);
+    notify("Imagem do relatório exportada.", "success");
   };
 
   // --- Derivações ---
@@ -249,7 +268,7 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
-        <DashboardHeader onImportCSV={handleFileUpload} onExportCSV={handleExportCSV} />
+        <DashboardHeader onImportCSV={handleFileUpload} onExportImage={handleExportImage} />
 
         <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} topCategory={topCategory} />
 
