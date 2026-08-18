@@ -109,6 +109,13 @@ export function calculateBillCurrentAmount(bill: Bill, referenceDate: Date = new
   return bill.originalAmount + penalty + interest;
 }
 
+/** Retorna a mesma data um mês à frente, no formato YYYY-MM-DD */
+export function addOneMonth(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().substring(0, 10);
+}
+
 export interface LinearRegression {
   slope: number;
   intercept: number;

@@ -5,6 +5,7 @@ import { Bill, Budget, Recurrence, Transaction } from "@/lib/types";
 import { initialBills, initialBudgets, initialTransactions, STORAGE_KEYS } from "@/lib/constants";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
+  addOneMonth,
   calculateBillCurrentAmount,
   calculateLinearRegression,
   categorizeTransaction,
@@ -105,9 +106,25 @@ function Dashboard() {
     const finalAmount = calculateBillCurrentAmount(bill);
     const todayStr = new Date().toISOString().substring(0, 10);
 
-    setBills((prev) =>
-      prev.map((b) => (b.id === bill.id ? { ...b, isPaid: true, paidDate: todayStr, paidAmount: finalAmount } : b))
-    );
+    setBills((prev) => {
+      const updated = prev.map((b) =>
+        b.id === bill.id ? { ...b, isPaid: true, paidDate: todayStr, paidAmount: finalAmount } : b
+      );
+
+      // Novo: se a conta é recorrente mensal, gera automaticamente a próxima ocorrência já em aberto
+      if (bill.isRecurringMonthly) {
+        const nextBill: Bill = {
+          ...bill,
+          id: generateId("bill"),
+          dueDate: addOneMonth(bill.dueDate),
+          isPaid: false,
+          paidDate: undefined,
+          paidAmount: undefined,
+        };
+        return [nextBill, ...updated];
+      }
+      return updated;
+    });
 
     const prefix = bill.type === "income" ? "[RECEBIDO]" : "[PAGO]";
     setTransactions((prev) => [
@@ -122,7 +139,11 @@ function Dashboard() {
       ...prev,
     ]);
     notify(
-      bill.type === "income" ? "Recebimento confirmado e lançado no extrato." : "Pagamento confirmado e lançado no extrato.",
+      bill.isRecurringMonthly
+        ? `${bill.type === "income" ? "Recebimento" : "Pagamento"} confirmado. Próxima conta de ${addOneMonth(bill.dueDate)} já foi criada.`
+        : bill.type === "income"
+        ? "Recebimento confirmado e lançado no extrato."
+        : "Pagamento confirmado e lançado no extrato.",
       "success"
     );
   };
@@ -277,8 +298,8 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6 md:p-10 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         <DashboardHeader onImportCSV={handleFileUpload} onExportImage={handleExportImage} />
 
         <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} topCategory={topCategory} />
@@ -287,12 +308,12 @@ function Dashboard() {
 
         <BillsManager bills={bills} onAddBill={handleAddBill} onSettleBill={handleSettleBill} onDeleteBill={handleDeleteBill} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           <CashFlowChart data={monthlyData} />
           <ExpenseProjectionChart data={projectedData} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           <ExpenseByCategoryChart data={categoryPieData} />
           <BudgetGoals budgets={budgets} spentByCategory={expensesByCategory} />
         </div>

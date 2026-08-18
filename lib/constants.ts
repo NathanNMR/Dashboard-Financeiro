@@ -103,6 +103,7 @@ export const initialBills: Bill[] = [
     category: "Cartão de Crédito",
     type: "expense",
     isPaid: false,
+    isRecurringMonthly: true,
   },
   {
     id: "bill-2",
@@ -114,6 +115,7 @@ export const initialBills: Bill[] = [
     category: "Freelance/Extra",
     type: "income",
     isPaid: false,
+    isRecurringMonthly: false,
   },
 ];
 

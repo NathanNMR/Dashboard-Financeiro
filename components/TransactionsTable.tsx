@@ -19,6 +19,15 @@ interface TransactionsTableProps {
 
 type SortKey = "date" | "amount";
 
+function RecurrenceBadge({ t }: { t: Transaction }) {
+  if (!t.recurrence || t.recurrence === "none") return null;
+  return (
+    <span className="text-[10px] font-semibold bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full whitespace-nowrap">
+      🔁 {RECURRENCE_LABELS[t.recurrence]}
+    </span>
+  );
+}
+
 export function TransactionsTable({
   transactions,
   filterCategory,
@@ -55,23 +64,21 @@ export function TransactionsTable({
   );
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col space-y-4">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col space-y-4">
+      <div className="flex flex-col gap-3">
         <h3 className="text-lg font-semibold text-slate-200">Extrato Consolidado</h3>
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
           <TextInput
             aria-label="Buscar por descrição"
             type="text"
             placeholder="Buscar descrição..."
             value={filterSearch}
             onChange={(e) => onFilterSearchChange(e.target.value)}
-            className="sm:w-52"
           />
           <SelectInput
             aria-label="Filtrar por tipo"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as "All" | "income" | "expense")}
-            className="sm:w-36"
           >
             <option value="All">Receitas e Despesas</option>
             <option value="income">Só Receitas</option>
@@ -81,95 +88,158 @@ export function TransactionsTable({
             aria-label="Filtrar por categoria"
             value={filterCategory}
             onChange={(e) => onFilterCategoryChange(e.target.value)}
-            className="sm:w-48"
           >
             <option value="All">Todas as Categorias</option>
             <CategoryOptions />
           </SelectInput>
         </div>
+
+        {/* Ordenação: em telas pequenas viram botões (cabeçalho de tabela não existe no card view) */}
+        <div className="flex md:hidden gap-2">
+          <button
+            onClick={() => toggleSort("date")}
+            className={`flex-1 text-xs py-1.5 rounded-lg border transition ${
+              sortKey === "date" ? "border-cyan-700 bg-cyan-950/40 text-cyan-300" : "border-slate-800 text-slate-400"
+            }`}
+          >
+            Data <SortArrow active={sortKey === "date"} />
+          </button>
+          <button
+            onClick={() => toggleSort("amount")}
+            className={`flex-1 text-xs py-1.5 rounded-lg border transition ${
+              sortKey === "amount" ? "border-cyan-700 bg-cyan-950/40 text-cyan-300" : "border-slate-800 text-slate-400"
+            }`}
+          >
+            Valor <SortArrow active={sortKey === "amount"} />
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 text-slate-400 select-none">
-              <th className="py-3 px-4 cursor-pointer hover:text-slate-200" onClick={() => toggleSort("date")}>
-                Data
-                <SortArrow active={sortKey === "date"} />
-              </th>
-              <th className="py-3 px-4">Descrição</th>
-              <th className="py-3 px-4">Categoria</th>
-              <th className="py-3 px-4 text-right cursor-pointer hover:text-slate-200" onClick={() => toggleSort("amount")}>
-                Valor
-                <SortArrow active={sortKey === "amount"} />
-              </th>
-              <th className="py-3 px-4 text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60">
-            {visibleTransactions.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-6 text-center text-slate-500">
-                  Nenhuma transação encontrada.
-                </td>
-              </tr>
-            ) : (
-              visibleTransactions.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-800/40 transition">
-                  <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{t.date}</td>
-                  <td className="py-3 px-4 font-medium text-slate-200">
-                    <div className="flex items-center gap-2">
-                      <span>{t.description}</span>
-                      {t.recurrence && t.recurrence !== "none" && (
-                        <span className="text-[10px] font-semibold bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                          🔁 {RECURRENCE_LABELS[t.recurrence]}
-                        </span>
-                      )}
+      {visibleTransactions.length === 0 ? (
+        <p className="py-6 text-center text-slate-500 text-sm">Nenhuma transação encontrada.</p>
+      ) : (
+        <>
+          {/* Mobile: cards empilhados */}
+          <ul className="md:hidden space-y-3">
+            {visibleTransactions.map((t) => (
+              <li key={t.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-medium text-slate-200 text-sm truncate">{t.description}</p>
+                      <RecurrenceBadge t={t} />
                     </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="bg-slate-800 text-cyan-300 text-xs px-2.5 py-1 rounded-full border border-slate-700 whitespace-nowrap">
-                      {CATEGORY_ICONS[t.category] ?? ""} {t.category}
-                    </span>
-                  </td>
-                  <td className={`py-3 px-4 text-right font-semibold whitespace-nowrap ${t.type === "income" ? "text-emerald-400" : "text-rose-400"}`}>
+                    <p className="text-xs text-slate-500">{t.date}</p>
+                  </div>
+                  <span
+                    className={`text-sm font-bold whitespace-nowrap ${t.type === "income" ? "text-emerald-400" : "text-rose-400"}`}
+                  >
                     {t.type === "income" ? "+ " : "- "}
                     {formatCurrency(t.amount)}
-                  </td>
-                  <td className="py-3 px-4 text-center space-x-2 whitespace-nowrap">
-                    <button
-                      onClick={() => onEdit(t)}
-                      className="text-cyan-400 hover:text-cyan-300 text-xs bg-cyan-950/40 border border-cyan-900/50 px-2.5 py-1 rounded-lg transition"
-                    >
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="bg-slate-800 text-cyan-300 text-xs px-2.5 py-1 rounded-full border border-slate-700">
+                    {CATEGORY_ICONS[t.category] ?? ""} {t.category}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => onEdit(t)} className="text-cyan-400 text-xs bg-cyan-950/40 border border-cyan-900/50 px-2.5 py-1 rounded-lg">
                       Editar
                     </button>
                     <button
                       onClick={() => onDelete(t, "single")}
-                      className="text-rose-400 hover:text-rose-300 text-xs bg-rose-950/40 border border-rose-900/50 px-2.5 py-1 rounded-lg transition"
+                      className="text-rose-400 text-xs bg-rose-950/40 border border-rose-900/50 px-2.5 py-1 rounded-lg"
                     >
                       Excluir
                     </button>
-                    {t.recurrenceGroupId && (
-                      <button
-                        onClick={() => onDelete(t, "series")}
-                        className="text-slate-500 hover:text-rose-400 text-[11px] underline decoration-dotted transition"
-                        title="Remove esta e todas as outras ocorrências desta série recorrente"
-                      >
-                        excluir série
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </div>
+                </div>
+                {t.recurrenceGroupId && (
+                  <button
+                    onClick={() => onDelete(t, "series")}
+                    className="text-slate-500 text-[11px] underline decoration-dotted"
+                  >
+                    excluir série completa
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
 
-      {visibleTransactions.length > 0 && (
-        <p className="text-xs text-slate-500 pt-1">
-          Exibindo {visibleTransactions.length} de {transactions.length} transações.
-        </p>
+          {/* Desktop / tablet: tabela tradicional */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 select-none">
+                  <th className="py-3 px-4 cursor-pointer hover:text-slate-200" onClick={() => toggleSort("date")}>
+                    Data
+                    <SortArrow active={sortKey === "date"} />
+                  </th>
+                  <th className="py-3 px-4">Descrição</th>
+                  <th className="py-3 px-4">Categoria</th>
+                  <th className="py-3 px-4 text-right cursor-pointer hover:text-slate-200" onClick={() => toggleSort("amount")}>
+                    Valor
+                    <SortArrow active={sortKey === "amount"} />
+                  </th>
+                  <th className="py-3 px-4 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {visibleTransactions.map((t) => (
+                  <tr key={t.id} className="hover:bg-slate-800/40 transition">
+                    <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{t.date}</td>
+                    <td className="py-3 px-4 font-medium text-slate-200">
+                      <div className="flex items-center gap-2">
+                        <span>{t.description}</span>
+                        <RecurrenceBadge t={t} />
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="bg-slate-800 text-cyan-300 text-xs px-2.5 py-1 rounded-full border border-slate-700 whitespace-nowrap">
+                        {CATEGORY_ICONS[t.category] ?? ""} {t.category}
+                      </span>
+                    </td>
+                    <td
+                      className={`py-3 px-4 text-right font-semibold whitespace-nowrap ${
+                        t.type === "income" ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {t.type === "income" ? "+ " : "- "}
+                      {formatCurrency(t.amount)}
+                    </td>
+                    <td className="py-3 px-4 text-center space-x-2 whitespace-nowrap">
+                      <button
+                        onClick={() => onEdit(t)}
+                        className="text-cyan-400 hover:text-cyan-300 text-xs bg-cyan-950/40 border border-cyan-900/50 px-2.5 py-1 rounded-lg transition"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => onDelete(t, "single")}
+                        className="text-rose-400 hover:text-rose-300 text-xs bg-rose-950/40 border border-rose-900/50 px-2.5 py-1 rounded-lg transition"
+                      >
+                        Excluir
+                      </button>
+                      {t.recurrenceGroupId && (
+                        <button
+                          onClick={() => onDelete(t, "series")}
+                          className="text-slate-500 hover:text-rose-400 text-[11px] underline decoration-dotted transition"
+                          title="Remove esta e todas as outras ocorrências desta série recorrente"
+                        >
+                          excluir série
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-xs text-slate-500 pt-1">
+            Exibindo {visibleTransactions.length} de {transactions.length} transações.
+          </p>
+        </>
       )}
     </div>
   );

@@ -64,7 +64,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
 
   return (
     <div
-      className={`bg-slate-900 border rounded-2xl p-6 shadow-xl transition ${
+      className={`bg-slate-900 border rounded-2xl p-4 sm:p-6 shadow-xl transition ${
         editingTransaction ? "border-amber-500/60 ring-2 ring-amber-500/20" : "border-slate-800"
       }`}
     >

@@ -28,6 +28,8 @@ export interface Bill {
   isPaid: boolean;
   paidDate?: string;
   paidAmount?: number;
+  /** Quando true, ao quitar esta conta uma nova ocorrência é criada automaticamente para o mês seguinte */
+  isRecurringMonthly?: boolean;
 }
 
 export type ToastKind = "success" | "error" | "info";

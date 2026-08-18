@@ -29,7 +29,7 @@ interface MonthlyDatum {
 
 export function CashFlowChart({ data }: { data: MonthlyDatum[] }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between">
       <h3 className="text-lg font-semibold text-slate-200 mb-4">Fluxo de Caixa Mensal</h3>
       <div className="h-72 w-full">
         {data.length === 0 ? (
@@ -58,7 +58,7 @@ interface ProjectedDatum extends MonthlyDatum {
 
 export function ExpenseProjectionChart({ data }: { data: ProjectedDatum[] }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between">
       <div>
         <h3 className="text-lg font-semibold text-slate-200">Projeção de Despesas (Regressão Linear)</h3>
         <p className="text-xs text-slate-400 mb-4">Tendência baseada estatisticamente no histórico.</p>
@@ -97,7 +97,7 @@ export function ExpenseByCategoryChart({ data }: { data: { name: string; value: 
   const sorted = [...data].sort((a, b) => b.value - a.value);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between">
       <h3 className="text-lg font-semibold text-slate-200 mb-2">Despesas por Categoria</h3>
       {data.length === 0 ? (
         <div className="h-72 w-full">
