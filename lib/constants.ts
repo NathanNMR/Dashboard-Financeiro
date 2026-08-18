@@ -11,6 +11,12 @@ export const CATEGORIES = [
   "Educação",
   "Lazer",
   "Assinaturas",
+  "Vestuário",
+  "Pets",
+  "Viagem",
+  "Presentes/Doações",
+  "Impostos/Taxas",
+  "Casa/Manutenção",
   "Outros",
 ] as const;
 
@@ -28,6 +34,12 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Educação: "#818cf8",
   Lazer: "#fb923c",
   Assinaturas: "#c084fc",
+  Vestuário: "#f472b6",
+  Pets: "#a3e635",
+  Viagem: "#2dd4bf",
+  "Presentes/Doações": "#fda4af",
+  "Impostos/Taxas": "#f87171",
+  "Casa/Manutenção": "#60a5fa",
   Outros: "#94a3b8",
 };
 
@@ -42,6 +54,12 @@ export const CATEGORY_ICONS: Record<string, string> = {
   Educação: "🎓",
   Lazer: "🎬",
   Assinaturas: "🔁",
+  Vestuário: "👕",
+  Pets: "🐾",
+  Viagem: "✈️",
+  "Presentes/Doações": "🎁",
+  "Impostos/Taxas": "🧾",
+  "Casa/Manutenção": "🛠️",
   Outros: "📦",
 };
 
@@ -108,5 +126,11 @@ export const initialBudgets: Budget = {
   Educação: 300,
   Lazer: 300,
   Assinaturas: 150,
+  Vestuário: 250,
+  Pets: 150,
+  Viagem: 300,
+  "Presentes/Doações": 100,
+  "Impostos/Taxas": 200,
+  "Casa/Manutenção": 250,
   Outros: 300,
 };

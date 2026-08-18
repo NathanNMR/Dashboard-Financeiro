@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bill, Budget, Recurrence, Transaction } from "@/lib/types";
 import { initialBills, initialBudgets, initialTransactions, STORAGE_KEYS } from "@/lib/constants";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -22,6 +22,7 @@ import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionsTable } from "@/components/TransactionsTable";
 import { CashFlowChart, ExpenseByCategoryChart, ExpenseProjectionChart } from "@/components/Charts";
 import { BudgetGoals } from "@/components/BudgetGoals";
+import { UpcomingDueAlert } from "@/components/UpcomingDueAlert";
 
 function Dashboard() {
   const { notify } = useToast();
@@ -37,11 +38,21 @@ function Dashboard() {
   const [filterCategory, setFilterCategory] = useState("All");
   const [filterSearch, setFilterSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const editingTransaction = useMemo(
     () => transactions.find((t) => t.id === editingId) ?? null,
     [transactions, editingId]
   );
+
+  // BUG CORRIGIDO: o formulário de edição fica acima do extrato na página.
+  // Antes, clicar em "Editar" preenchia o formulário mas ele ficava fora da
+  // área visível, dando a impressão de que o botão não fazia nada.
+  useEffect(() => {
+    if (editingId) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [editingId]);
 
   // --- Transações ---
   const handleSaveTransaction = (data: Omit<Transaction, "id">, recurrence: Recurrence) => {
@@ -272,6 +283,8 @@ function Dashboard() {
 
         <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} topCategory={topCategory} />
 
+        <UpcomingDueAlert bills={bills} />
+
         <BillsManager bills={bills} onAddBill={handleAddBill} onSettleBill={handleSettleBill} onDeleteBill={handleDeleteBill} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -284,11 +297,13 @@ function Dashboard() {
           <BudgetGoals budgets={budgets} spentByCategory={expensesByCategory} />
         </div>
 
-        <TransactionForm
-          editingTransaction={editingTransaction}
-          onSave={handleSaveTransaction}
-          onCancelEdit={() => setEditingId(null)}
-        />
+        <div ref={formRef} className="scroll-mt-6">
+          <TransactionForm
+            editingTransaction={editingTransaction}
+            onSave={handleSaveTransaction}
+            onCancelEdit={() => setEditingId(null)}
+          />
+        </div>
 
         <TransactionsTable
           transactions={filteredTransactions}

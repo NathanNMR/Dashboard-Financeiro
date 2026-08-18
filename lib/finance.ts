@@ -71,10 +71,22 @@ export function categorizeTransaction(description: string): string {
     return "Saúde";
   if (desc.includes("escola") || desc.includes("faculdade") || desc.includes("curso") || desc.includes("mensalidade escolar") || desc.includes("livro") || desc.includes("udemy"))
     return "Educação";
-  if (desc.includes("cinema") || desc.includes("show") || desc.includes("bar ") || desc.includes("balada") || desc.includes("viagem") || desc.includes("passeio") || desc.includes("jogo"))
+  if (desc.includes("cinema") || desc.includes("show") || desc.includes("bar ") || desc.includes("balada") || desc.includes("passeio") || desc.includes("jogo"))
     return "Lazer";
   if (desc.includes("netflix") || desc.includes("spotify") || desc.includes("prime video") || desc.includes("disney") || desc.includes("hbo") || desc.includes("assinatura") || desc.includes("mensalidade"))
     return "Assinaturas";
+  if (desc.includes("roupa") || desc.includes("loja") || desc.includes("calçado") || desc.includes("calcado") || desc.includes("tenis") || desc.includes("tênis") || desc.includes("zara") || desc.includes("renner"))
+    return "Vestuário";
+  if (desc.includes("pet") || desc.includes("veterinario") || desc.includes("veterinário") || desc.includes("racao") || desc.includes("ração") || desc.includes("petshop"))
+    return "Pets";
+  if (desc.includes("viagem") || desc.includes("passagem") || desc.includes("hotel") || desc.includes("hospedagem") || desc.includes("airbnb") || desc.includes("aereo") || desc.includes("aéreo"))
+    return "Viagem";
+  if (desc.includes("presente") || desc.includes("doacao") || desc.includes("doação") || desc.includes("caridade"))
+    return "Presentes/Doações";
+  if (desc.includes("imposto") || desc.includes("taxa") || desc.includes("irpf") || desc.includes("ipva") || desc.includes("darf"))
+    return "Impostos/Taxas";
+  if (desc.includes("reforma") || desc.includes("manutencao") || desc.includes("manutenção") || desc.includes("encanador") || desc.includes("eletricista") || desc.includes("marido de aluguel"))
+    return "Casa/Manutenção";
 
   return "Outros";
 }

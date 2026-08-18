@@ -22,6 +22,16 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [error, setError] = useState<string | null>(null);
 
+  const resetForm = () => {
+    setDesc("");
+    setAmount("");
+    setDate(todayISO());
+    setType("expense");
+    setCategory("Alimentação");
+    setRecurrence("none");
+    setError(null);
+  };
+
   useEffect(() => {
     if (editingTransaction) {
       setDesc(editingTransaction.description);
@@ -31,16 +41,14 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
       setCategory(editingTransaction.category);
       setRecurrence("none");
       setError(null);
+    } else {
+      // BUG CORRIGIDO: se a transação em edição for excluída pela tabela (e não
+      // pelo botão "Cancelar Edição"), o formulário ficava com os dados antigos
+      // na tela mesmo depois de sair do modo de edição.
+      resetForm();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingTransaction]);
-
-  const resetForm = () => {
-    setDesc("");
-    setAmount("");
-    setCategory("Alimentação");
-    setRecurrence("none");
-    setError(null);
-  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -55,7 +63,11 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+    <div
+      className={`bg-slate-900 border rounded-2xl p-6 shadow-xl transition ${
+        editingTransaction ? "border-amber-500/60 ring-2 ring-amber-500/20" : "border-slate-800"
+      }`}
+    >
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-slate-200">
           {editingTransaction ? "Editar Transação" : "Adicionar Nova Transação Manual"}
