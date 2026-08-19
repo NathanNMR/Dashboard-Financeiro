@@ -22,6 +22,12 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [error, setError] = useState<string | null>(null);
 
+  // BUG CORRIGIDO: o seletor "Repetir" ficava sempre travado durante a edição,
+  // mesmo quando a transação editada era avulsa (sem série). Agora só fica
+  // travado quando a transação já pertence a uma série existente, caso em que
+  // alterar a recorrência aqui seria ambíguo (edita 1 ocorrência ou a série toda?).
+  const belongsToExistingSeries = !!editingTransaction?.recurrenceGroupId;
+
   const resetForm = () => {
     setDesc("");
     setAmount("");
@@ -39,12 +45,9 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
       setDate(editingTransaction.date);
       setType(editingTransaction.type);
       setCategory(editingTransaction.category);
-      setRecurrence("none");
+      setRecurrence(editingTransaction.recurrenceGroupId ? editingTransaction.recurrence ?? "none" : "none");
       setError(null);
     } else {
-      // BUG CORRIGIDO: se a transação em edição for excluída pela tabela (e não
-      // pelo botão "Cancelar Edição"), o formulário ficava com os dados antigos
-      // na tela mesmo depois de sair do modo de edição.
       resetForm();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,8 +67,8 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
 
   return (
     <div
-      className={`bg-slate-900 border rounded-2xl p-4 sm:p-6 shadow-xl transition ${
-        editingTransaction ? "border-amber-500/60 ring-2 ring-amber-500/20" : "border-slate-800"
+      className={`bg-slate-900 border rounded-xl p-4 sm:p-6 shadow-lg shadow-black/20 transition ${
+        editingTransaction ? "border-amber-500/50" : "border-slate-800"
       }`}
     >
       <div className="flex justify-between items-center mb-4">
@@ -129,18 +132,26 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
               id="tx-recurrence"
               value={recurrence}
               onChange={(e) => setRecurrence(e.target.value as Recurrence)}
-              disabled={!!editingTransaction}
-              title={editingTransaction ? "Recorrência não pode ser alterada ao editar uma ocorrência" : undefined}
+              disabled={belongsToExistingSeries}
+              title={belongsToExistingSeries ? "Esta transação já pertence a uma série recorrente" : undefined}
             >
               <option value="none">Não repetir</option>
-              <option value="monthly">🔁 Mensal</option>
-              <option value="yearly">🔁 Anual</option>
+              <option value="monthly">Mensal</option>
+              <option value="yearly">Anual</option>
             </SelectInput>
           </FieldWrapper>
         </div>
-        {recurrence !== "none" && !editingTransaction && (
+        {belongsToExistingSeries && (
+          <p className="text-xs text-slate-500">
+            Esta transação já faz parte de uma série recorrente. Para mudar a recorrência, exclua a série no extrato e
+            cadastre novamente.
+          </p>
+        )}
+        {recurrence !== "none" && !belongsToExistingSeries && (
           <p className="text-xs text-cyan-400 bg-cyan-950/30 border border-cyan-900/40 rounded-lg px-3 py-2">
-            {recurrence === "monthly"
+            {editingTransaction
+              ? "Ao salvar, esta transação avulsa vira o início de uma nova série recorrente."
+              : recurrence === "monthly"
               ? "Serão criadas automaticamente 12 ocorrências mensais a partir desta data."
               : "Serão criadas automaticamente 5 ocorrências anuais a partir desta data."}
           </p>
@@ -148,10 +159,8 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
         {error && <p className="text-rose-400 text-xs">{error}</p>}
         <button
           type="submit"
-          className={`w-full text-white font-medium py-2.5 rounded-xl transition shadow-lg text-sm ${
-            editingTransaction
-              ? "bg-amber-600 hover:bg-amber-500 shadow-amber-950/30"
-              : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/30"
+          className={`w-full text-white font-medium py-2.5 rounded-lg transition text-sm ${
+            editingTransaction ? "bg-amber-600 hover:bg-amber-500" : "bg-emerald-600 hover:bg-emerald-500"
           }`}
         >
           {editingTransaction ? "Atualizar Transação" : "Salvar Transação"}

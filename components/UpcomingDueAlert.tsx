@@ -30,13 +30,10 @@ export function UpcomingDueAlert({ bills }: UpcomingDueAlertProps) {
   if (relevant.length === 0) return null;
 
   return (
-    <div className="bg-amber-950/30 border border-amber-800/50 rounded-2xl p-5 shadow-xl">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">⏰</span>
-        <h3 className="text-sm font-semibold text-amber-300">
-          {relevant.some((r) => r.diffDays < 0) ? "Contas atrasadas ou vencendo em breve" : "Contas vencendo nos próximos 7 dias"}
-        </h3>
-      </div>
+    <div className="bg-slate-900 border border-slate-800 border-l-2 border-l-amber-600 rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-amber-400 mb-3">
+        {relevant.some((r) => r.diffDays < 0) ? "Contas atrasadas ou vencendo em breve" : "Contas vencendo nos próximos 7 dias"}
+      </h3>
       <ul className="space-y-2">
         {relevant.map(({ bill, diffDays }) => (
           <li key={bill.id} className="flex items-center justify-between text-xs bg-slate-950/50 rounded-lg px-3 py-2">

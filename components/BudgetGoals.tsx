@@ -16,7 +16,7 @@ export function BudgetGoals({ budgets, spentByCategory }: BudgetGoalsProps) {
   });
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 shadow-lg shadow-black/20 flex flex-col justify-between">
       <div>
         <h3 className="text-lg font-semibold text-slate-200 mb-1">Metas de Gastos Mensais</h3>
         <p className="text-xs text-slate-400 mb-4">Acompanhe o teto de gastos por categoria.</p>

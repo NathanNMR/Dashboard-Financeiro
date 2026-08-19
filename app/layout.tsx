@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SmartFinance Dashboard Pro",
+  title: "SmartFinance",
   description: "Controle completo de contas, rendas, juros, orçamento e projeção financeira.",
 };
 

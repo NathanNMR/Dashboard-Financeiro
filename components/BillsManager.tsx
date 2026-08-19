@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Bill } from "@/lib/types";
 import { calculateBillCurrentAmount, formatCurrency } from "@/lib/finance";
 import { TextInput, SelectInput } from "./FormField";
@@ -13,22 +13,29 @@ interface BillsManagerProps {
   onDeleteBill: (bill: Bill) => void;
 }
 
+const monthLabelFormatter = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+
+function monthLabel(monthKey: string) {
+  const label = monthLabelFormatter.format(new Date(monthKey + "-02T00:00:00"));
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 function billStatus(bill: Bill, isLate: boolean) {
   if (bill.isPaid)
     return (
-      <span className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] px-2 py-0.5 rounded-full font-bold">
-        CONCLUÍDO
+      <span className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] px-2 py-0.5 rounded-full font-medium">
+        Concluído
       </span>
     );
   if (isLate)
     return (
-      <span className="bg-rose-950 text-rose-400 border border-rose-800/60 text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">
-        EM ATRASO
+      <span className="bg-rose-950 text-rose-400 border border-rose-800/60 text-[10px] px-2 py-0.5 rounded-full font-medium">
+        Em atraso
       </span>
     );
   return (
-    <span className="bg-amber-950 text-amber-400 border border-amber-800/60 text-[10px] px-2 py-0.5 rounded-full font-bold">
-      PENDENTE
+    <span className="bg-amber-950 text-amber-400 border border-amber-800/60 text-[10px] px-2 py-0.5 rounded-full font-medium">
+      Pendente
     </span>
   );
 }
@@ -67,20 +74,30 @@ export function BillsManager({ bills, onAddBill, onSettleBill, onDeleteBill }: B
     setIsRecurringMonthly(false);
   };
 
+  // Contas agrupadas por mês de vencimento, em ordem cronológica
+  const groupedByMonth = useMemo(() => {
+    const groups: Record<string, Bill[]> = {};
+    bills.forEach((b) => {
+      const key = b.dueDate.substring(0, 7);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(b);
+    });
+    Object.values(groups).forEach((list) => list.sort((a, b) => a.dueDate.localeCompare(b.dueDate)));
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [bills]);
+
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
-        <div>
-          <h3 className="text-lg sm:text-xl font-bold text-slate-100">Compromissos Financeiros (Contas & Rendas)</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Adicione despesas a pagar ou rendas a receber. Confirme a quitação para lançar automaticamente no extrato.
-          </p>
-        </div>
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 shadow-lg shadow-black/20 space-y-6">
+      <div>
+        <h3 className="text-lg sm:text-xl font-semibold text-slate-100">Compromissos Financeiros</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Contas a pagar e rendas a receber, organizadas por mês. Confirme a quitação para lançar no extrato.
+        </p>
       </div>
 
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 bg-slate-950 p-4 rounded-lg border border-slate-800"
       >
         <SelectInput
           aria-label="Tipo"
@@ -134,19 +151,19 @@ export function BillsManager({ bills, onAddBill, onSettleBill, onDeleteBill }: B
         </SelectInput>
         <button
           type="submit"
-          className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-2.5 sm:py-2 px-3 rounded-lg text-xs transition shadow"
+          className="bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-2.5 sm:py-2 px-3 rounded-lg text-xs transition"
         >
-          + Adicionar
+          Adicionar
         </button>
 
-        <label className="flex items-center gap-2 text-xs text-slate-300 sm:col-span-2 lg:col-span-8 select-none cursor-pointer">
+        <label className="flex items-center gap-2 text-xs text-slate-400 sm:col-span-2 lg:col-span-8 select-none cursor-pointer">
           <input
             type="checkbox"
             checked={isRecurringMonthly}
             onChange={(e) => setIsRecurringMonthly(e.target.checked)}
             className="w-4 h-4 rounded border-slate-700 bg-slate-900 accent-cyan-500"
           />
-          🔁 Repetir mensalmente (gera automaticamente a conta do mês seguinte ao quitar esta)
+          Repetir mensalmente — gera automaticamente a conta do mês seguinte ao quitar esta
         </label>
 
         {error && <p className="text-rose-400 text-xs sm:col-span-2 lg:col-span-8">{error}</p>}
@@ -155,128 +172,141 @@ export function BillsManager({ bills, onAddBill, onSettleBill, onDeleteBill }: B
       {bills.length === 0 ? (
         <p className="py-6 text-center text-slate-500 text-sm">Nenhuma conta cadastrada.</p>
       ) : (
-        <>
-          {/* Mobile: lista em cards (tabelas não são legíveis em telas estreitas) */}
-          <ul className="md:hidden space-y-3">
-            {bills.map((bill) => {
-              const currentVal = calculateBillCurrentAmount(bill);
-              const isLate = !bill.isPaid && bill.type === "expense" && currentVal > bill.originalAmount;
-              return (
-                <li key={bill.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`text-[11px] font-bold ${bill.type === "income" ? "text-emerald-400" : "text-rose-400"}`}>
-                          {bill.type === "income" ? "RENDA" : "DESPESA"}
-                        </span>
-                        {bill.isRecurringMonthly && (
-                          <span className="text-[10px] font-semibold bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full">
-                            🔁 Mensal
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-medium text-slate-200 text-sm truncate">{bill.description}</p>
-                      <p className="text-xs text-slate-500">Vence em {bill.dueDate}</p>
-                    </div>
-                    {billStatus(bill, isLate)}
-                  </div>
-                  <div
-                    className={`text-lg font-bold ${
-                      bill.type === "income" ? "text-emerald-400" : isLate ? "text-rose-400" : "text-slate-100"
-                    }`}
-                  >
-                    {formatCurrency(currentVal)}
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    {!bill.isPaid && (
-                      <button
-                        onClick={() => onSettleBill(bill)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium py-2 rounded-lg transition shadow"
-                      >
-                        {bill.type === "income" ? "Confirmar Recebimento" : "Confirmar Pagamento"}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onDeleteBill(bill)}
-                      className="px-3 text-slate-500 hover:text-rose-400 text-xs border border-slate-800 rounded-lg transition"
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+        <div className="space-y-6">
+          {groupedByMonth.map(([monthKey, monthBills]) => {
+            const monthExpense = monthBills.filter((b) => b.type === "expense").reduce((s, b) => s + calculateBillCurrentAmount(b), 0);
+            const monthIncome = monthBills.filter((b) => b.type === "income").reduce((s, b) => s + calculateBillCurrentAmount(b), 0);
 
-          {/* Desktop / tablet: tabela tradicional */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 text-xs">
-                  <th className="py-2.5 px-3">Tipo</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Descrição</th>
-                  <th className="py-2.5 px-3">Vencimento</th>
-                  <th className="py-2.5 px-3">Valor Previsto</th>
-                  <th className="py-2.5 px-3 text-center">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {bills.map((bill) => {
-                  const currentVal = calculateBillCurrentAmount(bill);
-                  const isLate = !bill.isPaid && bill.type === "expense" && currentVal > bill.originalAmount;
+            return (
+              <div key={monthKey}>
+                <div className="flex items-baseline justify-between mb-2 px-0.5">
+                  <h4 className="text-sm font-semibold text-slate-300">{monthLabel(monthKey)}</h4>
+                  <span className="text-xs text-slate-500">
+                    {monthIncome > 0 && <span className="text-emerald-500">+{formatCurrency(monthIncome)}</span>}
+                    {monthIncome > 0 && monthExpense > 0 && <span className="mx-1">·</span>}
+                    {monthExpense > 0 && <span className="text-rose-500">-{formatCurrency(monthExpense)}</span>}
+                  </span>
+                </div>
 
-                  return (
-                    <tr key={bill.id} className="hover:bg-slate-800/30 transition text-xs">
-                      <td className="py-3 px-3">
-                        {bill.type === "income" ? (
-                          <span className="text-emerald-400 font-bold">RENDA</span>
-                        ) : (
-                          <span className="text-rose-400 font-bold">DESPESA</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">{billStatus(bill, isLate)}</td>
-                      <td className="py-3 px-3 font-medium text-slate-200">
-                        <div className="flex items-center gap-2">
-                          <span>{bill.description}</span>
-                          {bill.isRecurringMonthly && (
-                            <span className="text-[10px] font-semibold bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                              🔁 Mensal
-                            </span>
-                          )}
+                {/* Mobile: cards empilhados */}
+                <ul className="md:hidden space-y-2">
+                  {monthBills.map((bill) => {
+                    const currentVal = calculateBillCurrentAmount(bill);
+                    const isLate = !bill.isPaid && bill.type === "expense" && currentVal > bill.originalAmount;
+                    return (
+                      <li key={bill.id} className="bg-slate-950 border border-slate-800 rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-[11px] font-semibold ${bill.type === "income" ? "text-emerald-500" : "text-rose-500"}`}>
+                                {bill.type === "income" ? "Renda" : "Despesa"}
+                              </span>
+                              {bill.isRecurringMonthly && (
+                                <span className="text-[10px] font-medium bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full">
+                                  Mensal
+                                </span>
+                              )}
+                            </div>
+                            <p className="font-medium text-slate-200 text-sm truncate">{bill.description}</p>
+                            <p className="text-xs text-slate-500">Vence em {bill.dueDate}</p>
+                          </div>
+                          {billStatus(bill, isLate)}
                         </div>
-                      </td>
-                      <td className="py-3 px-3 text-slate-400 whitespace-nowrap">{bill.dueDate}</td>
-                      <td
-                        className={`py-3 px-3 font-semibold whitespace-nowrap ${
-                          bill.type === "income" ? "text-emerald-400" : isLate ? "text-rose-400" : "text-slate-200"
-                        }`}
-                      >
-                        {formatCurrency(currentVal)}
-                      </td>
-                      <td className="py-3 px-3 text-center space-x-2 whitespace-nowrap">
-                        {!bill.isPaid && (
-                          <button
-                            onClick={() => onSettleBill(bill)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium px-3 py-1 rounded-lg transition shadow"
-                          >
-                            {bill.type === "income" ? "Confirmar Recebimento" : "Confirmar Pagamento"}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => onDeleteBill(bill)}
-                          className="text-slate-500 hover:text-rose-400 text-xs transition"
+                        <div
+                          className={`text-lg font-semibold ${
+                            bill.type === "income" ? "text-emerald-400" : isLate ? "text-rose-400" : "text-slate-100"
+                          }`}
                         >
-                          Excluir
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+                          {formatCurrency(currentVal)}
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          {!bill.isPaid && (
+                            <button
+                              onClick={() => onSettleBill(bill)}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium py-2 rounded-lg transition"
+                            >
+                              {bill.type === "income" ? "Confirmar Recebimento" : "Confirmar Pagamento"}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onDeleteBill(bill)}
+                            className="px-3 text-slate-500 hover:text-rose-400 text-xs border border-slate-800 rounded-lg transition"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {/* Desktop / tablet: tabela tradicional */}
+                <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-800">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-500 text-xs">
+                        <th className="py-2.5 px-3 font-medium">Tipo</th>
+                        <th className="py-2.5 px-3 font-medium">Status</th>
+                        <th className="py-2.5 px-3 font-medium">Descrição</th>
+                        <th className="py-2.5 px-3 font-medium">Vencimento</th>
+                        <th className="py-2.5 px-3 font-medium">Valor Previsto</th>
+                        <th className="py-2.5 px-3 font-medium text-center">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {monthBills.map((bill) => {
+                        const currentVal = calculateBillCurrentAmount(bill);
+                        const isLate = !bill.isPaid && bill.type === "expense" && currentVal > bill.originalAmount;
+
+                        return (
+                          <tr key={bill.id} className="hover:bg-slate-800/30 transition text-xs">
+                            <td className="py-3 px-3">
+                              <span className={`font-medium ${bill.type === "income" ? "text-emerald-500" : "text-rose-500"}`}>
+                                {bill.type === "income" ? "Renda" : "Despesa"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">{billStatus(bill, isLate)}</td>
+                            <td className="py-3 px-3 font-medium text-slate-200">
+                              <div className="flex items-center gap-2">
+                                <span>{bill.description}</span>
+                                {bill.isRecurringMonthly && (
+                                  <span className="text-[10px] font-medium bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    Mensal
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-slate-400 whitespace-nowrap">{bill.dueDate}</td>
+                            <td
+                              className={`py-3 px-3 font-semibold whitespace-nowrap ${
+                                bill.type === "income" ? "text-emerald-400" : isLate ? "text-rose-400" : "text-slate-200"
+                              }`}
+                            >
+                              {formatCurrency(currentVal)}
+                            </td>
+                            <td className="py-3 px-3 text-center space-x-2 whitespace-nowrap">
+                              {!bill.isPaid && (
+                                <button
+                                  onClick={() => onSettleBill(bill)}
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium px-3 py-1 rounded-lg transition"
+                                >
+                                  {bill.type === "income" ? "Confirmar Recebimento" : "Confirmar Pagamento"}
+                                </button>
+                              )}
+                              <button onClick={() => onDeleteBill(bill)} className="text-slate-500 hover:text-rose-400 text-xs transition">
+                                Excluir
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

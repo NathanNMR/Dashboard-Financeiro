@@ -58,9 +58,20 @@ function Dashboard() {
   // --- Transações ---
   const handleSaveTransaction = (data: Omit<Transaction, "id">, recurrence: Recurrence) => {
     if (editingId) {
-      setTransactions((prev) => prev.map((t) => (t.id === editingId ? { ...t, ...data } : t)));
+      const original = transactions.find((t) => t.id === editingId);
+
+      // Transação avulsa (sem série) recebeu uma recorrência ao ser editada:
+      // ela vira o início de uma nova série, em vez de só editar 1 campo.
+      if (recurrence !== "none" && original && !original.recurrenceGroupId) {
+        const occurrences = generateRecurringOccurrences(data, recurrence);
+        const newTransactions = occurrences.map((occ) => ({ id: generateId("recur"), ...occ }));
+        setTransactions((prev) => [...newTransactions, ...prev.filter((t) => t.id !== editingId)]);
+        notify(`Transação convertida em série recorrente (${newTransactions.length} ocorrências).`, "success");
+      } else {
+        setTransactions((prev) => prev.map((t) => (t.id === editingId ? { ...t, ...data } : t)));
+        notify("Transação atualizada com sucesso.", "success");
+      }
       setEditingId(null);
-      notify("Transação atualizada com sucesso.", "success");
       return;
     }
 
@@ -266,16 +277,34 @@ function Dashboard() {
     return Object.values(acc).sort((a, b) => a.month.localeCompare(b.month));
   }, [transactions]);
 
+  // Soma das despesas recorrentes mensais já comprometidas (Contas & Rendas).
+  // É um "piso" de gasto conhecido: mesmo que a regressão estatística preveja
+  // menos, sabemos que esse valor vai se repetir todo mês.
+  const recurringMonthlyExpenses = useMemo(
+    () => bills.filter((b) => b.isRecurringMonthly && b.type === "expense").reduce((sum, b) => sum + b.originalAmount, 0),
+    [bills]
+  );
+
   const projectedData = useMemo(() => {
-    if (monthlyData.length < 2) return monthlyData.map((d) => ({ ...d, projectedExpense: null }));
+    if (monthlyData.length < 2) {
+      if (recurringMonthlyExpenses === 0) return monthlyData.map((d) => ({ ...d, projectedExpense: null }));
+      // Sem histórico suficiente para regressão, mas já há despesas recorrentes conhecidas:
+      // usa isso como projeção mínima para os 2 próximos meses.
+    }
+
     const expensePoints = monthlyData.map((item, index) => ({ x: index + 1, y: item.expense }));
     const regression = calculateLinearRegression(expensePoints);
     const result = monthlyData.map((d) => ({ ...d, projectedExpense: null as number | null }));
 
+    const lastMonthRef = monthlyData.length > 0 ? monthlyData[monthlyData.length - 1].month : new Date().toISOString().substring(0, 7);
+
     for (let i = 1; i <= 2; i++) {
       const nextX = monthlyData.length + i;
-      const predictedVal = Math.max(0, regression.predict(nextX));
-      const lastMonthDate = new Date(monthlyData[monthlyData.length - 1].month + "-01");
+      const statisticalPrediction = monthlyData.length >= 2 ? regression.predict(nextX) : 0;
+      // Novo: a projeção nunca fica abaixo das despesas recorrentes mensais já comprometidas
+      const predictedVal = Math.max(0, statisticalPrediction, recurringMonthlyExpenses);
+
+      const lastMonthDate = new Date(lastMonthRef + "-01");
       lastMonthDate.setMonth(lastMonthDate.getMonth() + i);
       const futureMonthKey = lastMonthDate.toISOString().substring(0, 7);
 
@@ -287,7 +316,7 @@ function Dashboard() {
       });
     }
     return result;
-  }, [monthlyData]);
+  }, [monthlyData, recurringMonthlyExpenses]);
 
   if (!txHydrated || !billsHydrated) {
     return (

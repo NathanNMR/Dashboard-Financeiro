@@ -50,12 +50,9 @@ export function renderDashboardImage(data: ExportImageData): string {
   ctx.fillRect(0, 0, width, height);
 
   // Cabeçalho
-  const gradient = ctx.createLinearGradient(40, 0, 460, 0);
-  gradient.addColorStop(0, COLORS.emerald);
-  gradient.addColorStop(1, COLORS.cyan);
-  ctx.fillStyle = gradient;
-  ctx.font = "bold 32px Arial, sans-serif";
-  ctx.fillText("SmartFinance Dashboard Pro", 40, 60);
+  ctx.fillStyle = COLORS.text;
+  ctx.font = "bold 28px Arial, sans-serif";
+  ctx.fillText("SmartFinance", 40, 56);
 
   ctx.fillStyle = COLORS.subtext;
   ctx.font = "16px Arial, sans-serif";

@@ -23,7 +23,7 @@ function RecurrenceBadge({ t }: { t: Transaction }) {
   if (!t.recurrence || t.recurrence === "none") return null;
   return (
     <span className="text-[10px] font-semibold bg-purple-950 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full whitespace-nowrap">
-      🔁 {RECURRENCE_LABELS[t.recurrence]}
+      ↻ {RECURRENCE_LABELS[t.recurrence]}
     </span>
   );
 }
@@ -64,7 +64,7 @@ export function TransactionsTable({
   );
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col space-y-4">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 shadow-lg shadow-black/20 flex flex-col space-y-4">
       <div className="flex flex-col gap-3">
         <h3 className="text-lg font-semibold text-slate-200">Extrato Consolidado</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
