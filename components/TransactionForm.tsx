@@ -2,8 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { Recurrence, Transaction } from "@/lib/types";
+import { CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { FieldWrapper, TextInput, SelectInput } from "./FormField";
 import { CategoryOptions } from "./CategoryOptions";
+
+const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => !(INCOME_CATEGORIES as readonly string[]).includes(c));
 
 interface TransactionFormProps {
   editingTransaction: Transaction | null;
@@ -52,6 +55,18 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingTransaction]);
+
+  // BUG CORRIGIDO: categorias de receita (ex: "Salário") continuavam
+  // selecionáveis/visíveis mesmo depois de trocar o tipo para "Despesa", e
+  // vice-versa. Agora a lista de categorias é filtrada pelo tipo, e se a
+  // categoria atual deixar de ser válida, ela é trocada automaticamente.
+  useEffect(() => {
+    const validList = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    if (!(validList as readonly string[]).includes(category)) {
+      setCategory(validList[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -124,7 +139,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
           </FieldWrapper>
           <FieldWrapper label="Categoria" htmlFor="tx-category">
             <SelectInput id="tx-category" value={category} onChange={(e) => setCategory(e.target.value)}>
-              <CategoryOptions />
+              <CategoryOptions type={type} />
             </SelectInput>
           </FieldWrapper>
           <FieldWrapper label="Repetir" htmlFor="tx-recurrence">

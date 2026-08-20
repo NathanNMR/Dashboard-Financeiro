@@ -9,6 +9,7 @@ import {
   calculateBillCurrentAmount,
   calculateLinearRegression,
   categorizeTransaction,
+  currentMonthKey,
   generateId,
   generateRecurringOccurrences,
   parseCsvLine,
@@ -58,11 +59,9 @@ function Dashboard() {
   // --- Transações ---
   const handleSaveTransaction = (data: Omit<Transaction, "id">, recurrence: Recurrence) => {
     if (editingId) {
-      const original = transactions.find((t) => t.id === editingId);
-
       // Transação avulsa (sem série) recebeu uma recorrência ao ser editada:
       // ela vira o início de uma nova série, em vez de só editar 1 campo.
-      if (recurrence !== "none" && original && !original.recurrenceGroupId) {
+      if (recurrence !== "none" && editingTransaction && !editingTransaction.recurrenceGroupId) {
         const occurrences = generateRecurringOccurrences(data, recurrence);
         const newTransactions = occurrences.map((occ) => ({ id: generateId("recur"), ...occ }));
         setTransactions((prev) => [...newTransactions, ...prev.filter((t) => t.id !== editingId)]);
@@ -256,6 +255,21 @@ function Dashboard() {
     return acc;
   }, [transactions]);
 
+  // BUG CORRIGIDO: as metas de orçamento (que são mensais) estavam sendo
+  // comparadas contra o gasto acumulado de TODO o histórico, não contra o
+  // gasto do mês atual — o que fazia qualquer meta parecer estourada depois
+  // de poucos meses de uso. Agora usamos só o mês corrente.
+  const currentMonthExpensesByCategory = useMemo(() => {
+    const thisMonth = currentMonthKey();
+    const acc: Record<string, number> = {};
+    transactions
+      .filter((t) => t.type === "expense" && t.date.substring(0, 7) === thisMonth)
+      .forEach((t) => {
+        acc[t.category] = (acc[t.category] || 0) + t.amount;
+      });
+    return acc;
+  }, [transactions]);
+
   const categoryPieData = useMemo(
     () => Object.entries(expensesByCategory).map(([name, value]) => ({ name, value })),
     [expensesByCategory]
@@ -343,8 +357,8 @@ function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          <ExpenseByCategoryChart data={categoryPieData} />
-          <BudgetGoals budgets={budgets} spentByCategory={expensesByCategory} />
+          <ExpenseByCategoryChart transactions={transactions} />
+          <BudgetGoals budgets={budgets} spentByCategory={currentMonthExpensesByCategory} />
         </div>
 
         <div ref={formRef} className="scroll-mt-6">

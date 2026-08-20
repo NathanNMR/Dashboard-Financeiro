@@ -18,8 +18,8 @@ export function BudgetGoals({ budgets, spentByCategory }: BudgetGoalsProps) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 shadow-lg shadow-black/20 flex flex-col justify-between">
       <div>
-        <h3 className="text-lg font-semibold text-slate-200 mb-1">Metas de Gastos Mensais</h3>
-        <p className="text-xs text-slate-400 mb-4">Acompanhe o teto de gastos por categoria.</p>
+        <h3 className="text-lg font-semibold text-slate-200 mb-1">Metas de Gastos do Mês</h3>
+        <p className="text-xs text-slate-400 mb-4">Progresso do mês atual em relação ao teto definido por categoria.</p>
       </div>
       {categories.length === 0 ? (
         <EmptyState message="Nenhuma meta de orçamento configurada." />

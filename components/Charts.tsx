@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -15,9 +16,11 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { Transaction } from "@/lib/types";
 import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/constants";
-import { formatCurrency } from "@/lib/finance";
+import { currentMonthKey, formatCurrency } from "@/lib/finance";
 import { EmptyState } from "./EmptyState";
+import { MonthSwitcher } from "./MonthSwitcher";
 
 const tooltipStyle = { backgroundColor: "#0f172a", borderColor: "#334155", color: "#f8fafc" };
 
@@ -95,16 +98,42 @@ export function ExpenseProjectionChart({ data }: { data: ProjectedDatum[] }) {
   );
 }
 
-export function ExpenseByCategoryChart({ data }: { data: { name: string; value: number }[] }) {
+export function ExpenseByCategoryChart({ transactions }: { transactions: Transaction[] }) {
+  const expenseTx = useMemo(() => transactions.filter((t) => t.type === "expense"), [transactions]);
+
+  // Meses com despesas registradas, para não misturar tudo num só gráfico
+  const monthKeys = useMemo(() => Array.from(new Set(expenseTx.map((t) => t.date.substring(0, 7)))).sort(), [expenseTx]);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const keys = Array.from(new Set(expenseTx.map((t) => t.date.substring(0, 7)))).sort();
+    if (keys.length === 0) return "all";
+    const today = currentMonthKey();
+    if (keys.includes(today)) return today;
+    const past = keys.filter((k) => k < today);
+    return past.length > 0 ? past[past.length - 1] : keys[0];
+  });
+
+  const data = useMemo(() => {
+    const scoped = selectedMonth === "all" ? expenseTx : expenseTx.filter((t) => t.date.substring(0, 7) === selectedMonth);
+    const acc: Record<string, number> = {};
+    scoped.forEach((t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+    });
+    return Object.entries(acc).map(([name, value]) => ({ name, value }));
+  }, [expenseTx, selectedMonth]);
+
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const sorted = [...data].sort((a, b) => b.value - a.value);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 shadow-lg shadow-black/20 flex flex-col justify-between">
-      <h3 className="text-lg font-semibold text-slate-200 mb-2">Despesas por Categoria</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+        <h3 className="text-lg font-semibold text-slate-200">Despesas por Categoria</h3>
+        {monthKeys.length > 0 && <MonthSwitcher months={monthKeys} value={selectedMonth} onChange={setSelectedMonth} className="sm:w-64" />}
+      </div>
       {data.length === 0 ? (
         <div className="h-72 w-full">
-          <EmptyState message="Nenhuma despesa registrada ainda." />
+          <EmptyState message="Nenhuma despesa registrada neste período." />
         </div>
       ) : (
         <div className="flex flex-col sm:flex-row items-center gap-4">

@@ -116,6 +116,18 @@ export function addOneMonth(dateStr: string): string {
   return d.toISOString().substring(0, 10);
 }
 
+const monthLabelFormatter = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+
+/** Formata uma chave "YYYY-MM" como "Agosto de 2026", usada nos seletores de mês */
+export function formatMonthLabel(monthKey: string): string {
+  const label = monthLabelFormatter.format(new Date(monthKey + "-02T00:00:00"));
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export function currentMonthKey(): string {
+  return new Date().toISOString().substring(0, 7);
+}
+
 export interface LinearRegression {
   slope: number;
   intercept: number;

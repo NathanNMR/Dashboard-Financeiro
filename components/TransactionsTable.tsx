@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Transaction } from "@/lib/types";
-import { formatCurrency } from "@/lib/finance";
+import { formatCurrency, formatMonthLabel, currentMonthKey } from "@/lib/finance";
 import { CATEGORY_ICONS, RECURRENCE_LABELS } from "@/lib/constants";
 import { TextInput, SelectInput } from "./FormField";
 import { CategoryOptions } from "./CategoryOptions";
+import { MonthSwitcher } from "./MonthSwitcher";
 
 interface TransactionsTableProps {
   transactions: Transaction[];
@@ -41,14 +42,33 @@ export function TransactionsTable({
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDesc, setSortDesc] = useState(true);
 
+  // Meses com transações, para o usuário isolar um mês por vez em vez de ver
+  // tudo (inclusive lançamentos recorrentes futuros) misturado.
+  const monthKeys = useMemo(() => Array.from(new Set(transactions.map((t) => t.date.substring(0, 7)))).sort(), [transactions]);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const keys = Array.from(new Set(transactions.map((t) => t.date.substring(0, 7)))).sort();
+    if (keys.length === 0) return "all";
+    const today = currentMonthKey();
+    if (keys.includes(today)) return today;
+    // Prefere o mês passado mais recente a abrir direto num mês futuro
+    // distante (o que aconteceria facilmente por causa de lançamentos
+    // recorrentes que já populam vários meses à frente).
+    const past = keys.filter((k) => k < today);
+    return past.length > 0 ? past[past.length - 1] : keys[0];
+  });
+
   const visibleTransactions = useMemo(() => {
-    const filtered = filterType === "All" ? transactions : transactions.filter((t) => t.type === filterType);
+    let filtered = filterType === "All" ? transactions : transactions.filter((t) => t.type === filterType);
+    if (selectedMonth !== "all") {
+      filtered = filtered.filter((t) => t.date.substring(0, 7) === selectedMonth);
+    }
     const sorted = [...filtered].sort((a, b) => {
       const cmp = sortKey === "date" ? a.date.localeCompare(b.date) : a.amount - b.amount;
       return sortDesc ? -cmp : cmp;
     });
     return sorted;
-  }, [transactions, filterType, sortKey, sortDesc]);
+  }, [transactions, filterType, selectedMonth, sortKey, sortDesc]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -66,7 +86,10 @@ export function TransactionsTable({
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 shadow-lg shadow-black/20 flex flex-col space-y-4">
       <div className="flex flex-col gap-3">
-        <h3 className="text-lg font-semibold text-slate-200">Extrato Consolidado</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold text-slate-200">Extrato Consolidado</h3>
+          <MonthSwitcher months={monthKeys} value={selectedMonth} onChange={setSelectedMonth} className="sm:w-72" />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
           <TextInput
             aria-label="Buscar por descrição"
@@ -90,7 +113,7 @@ export function TransactionsTable({
             onChange={(e) => onFilterCategoryChange(e.target.value)}
           >
             <option value="All">Todas as Categorias</option>
-            <CategoryOptions />
+            <CategoryOptions type={filterType !== "All" ? filterType : undefined} />
           </SelectInput>
         </div>
 
@@ -116,7 +139,9 @@ export function TransactionsTable({
       </div>
 
       {visibleTransactions.length === 0 ? (
-        <p className="py-6 text-center text-slate-500 text-sm">Nenhuma transação encontrada.</p>
+        <p className="py-6 text-center text-slate-500 text-sm">
+          {selectedMonth !== "all" ? `Nenhuma transação em ${formatMonthLabel(selectedMonth)}.` : "Nenhuma transação encontrada."}
+        </p>
       ) : (
         <>
           {/* Mobile: cards empilhados */}
@@ -237,7 +262,8 @@ export function TransactionsTable({
           </div>
 
           <p className="text-xs text-slate-500 pt-1">
-            Exibindo {visibleTransactions.length} de {transactions.length} transações.
+            Exibindo {visibleTransactions.length} de {transactions.length} transações
+            {selectedMonth !== "all" ? ` (${formatMonthLabel(selectedMonth)})` : ""}.
           </p>
         </>
       )}
