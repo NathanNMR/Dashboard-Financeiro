@@ -5,6 +5,8 @@ import { Bill } from "@/lib/types";
 import { CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { calculateBillCurrentAmount, currentMonthKey, formatCurrency, formatMonthLabel } from "@/lib/finance";
 import { TextInput, SelectInput } from "./FormField";
+import { parseMoneyInput } from "@/lib/money";
+import { toLocalISODate } from "@/lib/finance";
 import { CategoryOptions } from "./CategoryOptions";
 import { MonthSwitcher } from "./MonthSwitcher";
 
@@ -40,7 +42,7 @@ function billStatus(bill: Bill, isLate: boolean) {
 export function BillsManager({ bills, onAddBill, onSettleBill, onDeleteBill }: BillsManagerProps) {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
-  const [dueDate, setDueDate] = useState(() => new Date().toISOString().substring(0, 10));
+  const [dueDate, setDueDate] = useState(() => toLocalISODate());
   const [interest, setInterest] = useState("0.33");
   const [penalty, setPenalty] = useState("2.0");
   const [category, setCategory] = useState("Moradia");
@@ -61,7 +63,7 @@ export function BillsManager({ bills, onAddBill, onSettleBill, onDeleteBill }: B
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseMoneyInput(amount);
     if (!desc.trim() || !amount || isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("Informe uma descrição e um valor maior que zero.");
       return;

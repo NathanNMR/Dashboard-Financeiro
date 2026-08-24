@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { Recurrence, Transaction } from "@/lib/types";
 import { CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { FieldWrapper, TextInput, SelectInput } from "./FormField";
+import { parseMoneyInput } from "@/lib/money";
+import { toLocalISODate } from "@/lib/finance";
 import { CategoryOptions } from "./CategoryOptions";
 
 const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => !(INCOME_CATEGORIES as readonly string[]).includes(c));
@@ -14,7 +16,7 @@ interface TransactionFormProps {
   onCancelEdit: () => void;
 }
 
-const todayISO = () => new Date().toISOString().substring(0, 10);
+const todayISO = () => toLocalISODate();
 
 export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: TransactionFormProps) {
   const [desc, setDesc] = useState("");
@@ -70,7 +72,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseMoneyInput(amount);
     if (!desc.trim() || !amount || isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("Informe uma descrição e um valor maior que zero.");
       return;

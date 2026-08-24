@@ -3,9 +3,10 @@ import { ChangeEvent } from "react";
 interface DashboardHeaderProps {
   onImportCSV: (e: ChangeEvent<HTMLInputElement>) => void;
   onExportImage: () => void;
+  onExportCSV: () => void;
 }
 
-export function DashboardHeader({ onImportCSV, onExportImage }: DashboardHeaderProps) {
+export function DashboardHeader({ onImportCSV, onExportImage, onExportCSV }: DashboardHeaderProps) {
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-6">
       <div className="flex items-center gap-3">
@@ -22,12 +23,20 @@ export function DashboardHeader({ onImportCSV, onExportImage }: DashboardHeaderP
           Importar CSV
           <input type="file" accept=".csv" onChange={onImportCSV} className="hidden" />
         </label>
-        <button
-          onClick={onExportImage}
-          className="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium transition"
-        >
-          Exportar Imagem
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={onExportCSV}
+            className="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium transition"
+          >
+            Exportar CSV
+          </button>
+          <button
+            onClick={onExportImage}
+            className="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium transition"
+          >
+            Exportar Imagem
+          </button>
+        </div>
       </div>
     </header>
   );

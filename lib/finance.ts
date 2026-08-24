@@ -1,4 +1,5 @@
 import { Bill, Recurrence, Transaction } from "./types";
+import { roundMoney } from "./money";
 
 /** Quantas ocorrências futuras gerar automaticamente ao marcar como recorrente */
 const RECURRENCE_HORIZON: Record<Exclude<Recurrence, "none">, number> = {
@@ -106,14 +107,21 @@ export function calculateBillCurrentAmount(bill: Bill, referenceDate: Date = new
   const penalty = bill.originalAmount * (bill.penaltyRate / 100);
   const interest = bill.originalAmount * (bill.dailyInterestRate / 100) * diffDays;
 
-  return bill.originalAmount + penalty + interest;
+  return roundMoney(bill.originalAmount + penalty + interest);
 }
 
 /** Retorna a mesma data um mês à frente, no formato YYYY-MM-DD */
+export function toLocalISODate(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function addOneMonth(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   d.setMonth(d.getMonth() + 1);
-  return d.toISOString().substring(0, 10);
+  return toLocalISODate(d);
 }
 
 const monthLabelFormatter = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
@@ -125,7 +133,7 @@ export function formatMonthLabel(monthKey: string): string {
 }
 
 export function currentMonthKey(): string {
-  return new Date().toISOString().substring(0, 7);
+  return toLocalISODate(new Date()).substring(0, 7);
 }
 
 export interface LinearRegression {

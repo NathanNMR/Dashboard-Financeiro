@@ -12,9 +12,12 @@ import {
   currentMonthKey,
   generateId,
   generateRecurringOccurrences,
-  parseCsvLine,
+  toLocalISODate,
 } from "@/lib/finance";
 import { downloadDataUrl, renderDashboardImage } from "@/lib/imageExport";
+import { importTransactionsCsv } from "@/lib/csv";
+import { csvEscape } from "@/lib/finance";
+import { roundMoney } from "@/lib/money";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { DashboardHeader } from "@/components/DashboardHeader";
@@ -114,7 +117,7 @@ function Dashboard() {
 
   const handleSettleBill = (bill: Bill) => {
     const finalAmount = calculateBillCurrentAmount(bill);
-    const todayStr = new Date().toISOString().substring(0, 10);
+    const todayStr = toLocalISODate();
 
     setBills((prev) => {
       const updated = prev.map((b) =>
@@ -169,49 +172,65 @@ function Dashboard() {
     notify("Compromisso excluído.", "info");
   };
 
-  // --- Importação / Exportação CSV (agora com parsing e escaping corretos, RFC 4180) ---
+  // --- Importação / Exportação CSV ---
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (!text) return;
+      const text = typeof event.target?.result === "string" ? event.target.result : "";
+      if (!text) {
+        notify("O arquivo CSV está vazio.", "error");
+        return;
+      }
 
-      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-      const imported: Transaction[] = [];
+      const result = importTransactionsCsv(text);
 
-      lines.forEach((line, idx) => {
-        const parts = parseCsvLine(line);
-        if (parts.length < 3) return;
+      if (result.transactions.length > 0) {
+        setTransactions((prev) => [...result.transactions, ...prev]);
 
-        const date = parts[0];
-        const description = parts[1];
-        const amount = parseFloat(parts[2]);
-        const type = (parts[3]?.toLowerCase() === "income" ? "income" : "expense") as "income" | "expense";
+        const invalidMessage =
+          result.invalidRows.length > 0
+            ? ` ${result.invalidRows.length} linha(s) inválida(s) foram ignoradas.`
+            : "";
 
-        if (!isNaN(amount) && /^\d{4}-\d{2}-\d{2}$/.test(date) && description) {
-          imported.push({
-            id: generateId(`csv-${idx}`),
-            date,
-            description,
-            amount,
-            category: categorizeTransaction(description),
-            type,
-          });
-        }
-      });
-
-      if (imported.length > 0) {
-        setTransactions((prev) => [...imported, ...prev]);
-        notify(`${imported.length} transações importadas com sucesso via CSV.`, "success");
+        notify(`${result.transactions.length} transações importadas via CSV.${invalidMessage}`, "success");
       } else {
-        notify("Não foi possível ler as linhas. Formato esperado: AAAA-MM-DD, Descrição, Valor, [expense/income]", "error");
+        notify(
+          "Nenhuma transação válida encontrada. Use AAAA-MM-DD;Descrição;1.250,50;despesa (ou o formato com vírgulas).",
+          "error"
+        );
       }
     };
-    reader.readAsText(file);
-    e.target.value = ""; // permite reimportar o mesmo arquivo depois
+
+    reader.onerror = () => notify("Não foi possível ler o arquivo CSV.", "error");
+    reader.readAsText(file, "UTF-8");
+    e.target.value = "";
+  };
+
+  const handleExportCsv = () => {
+    const header = ["data", "descricao", "valor", "tipo", "categoria"];
+    const rows = transactions.map((t) => [
+      t.date,
+      t.description,
+      t.amount.toFixed(2).replace(".", ","),
+      t.type === "income" ? "receita" : "despesa",
+      t.category,
+    ]);
+
+    const csv = [header, ...rows]
+      .map((row) => row.map((value) => csvEscape(value)).join(";"))
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `transacoes_financeiras_${toLocalISODate()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    notify("CSV exportado com sucesso.", "success");
   };
 
   const handleExportImage = () => {
@@ -241,7 +260,7 @@ function Dashboard() {
     let income = 0;
     let expense = 0;
     transactions.forEach((t) => (t.type === "income" ? (income += t.amount) : (expense += t.amount)));
-    return { totalIncome: income, totalExpense: expense, balance: income - expense };
+    return { totalIncome: roundMoney(income), totalExpense: roundMoney(expense), balance: roundMoney(income - expense) };
   }, [transactions]);
 
   // Uma única fonte de verdade para "gasto por categoria" (antes era calculado 2x separadamente)
@@ -310,7 +329,7 @@ function Dashboard() {
     const regression = calculateLinearRegression(expensePoints);
     const result = monthlyData.map((d) => ({ ...d, projectedExpense: null as number | null }));
 
-    const lastMonthRef = monthlyData.length > 0 ? monthlyData[monthlyData.length - 1].month : new Date().toISOString().substring(0, 7);
+    const lastMonthRef = monthlyData.length > 0 ? monthlyData[monthlyData.length - 1].month : currentMonthKey();
 
     for (let i = 1; i <= 2; i++) {
       const nextX = monthlyData.length + i;
@@ -343,7 +362,7 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
-        <DashboardHeader onImportCSV={handleFileUpload} onExportImage={handleExportImage} />
+        <DashboardHeader onImportCSV={handleFileUpload} onExportImage={handleExportImage} onExportCSV={handleExportCsv} />
 
         <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} topCategory={topCategory} />
 
