@@ -1,4 +1,4 @@
-import { Bill, Budget, Transaction } from "./types";
+import { Bill, Budget, CategoryDef, CreditCard, Goal, Transaction } from "./types";
 
 export const CATEGORIES = [
   "Salário",
@@ -72,7 +72,75 @@ export const STORAGE_KEYS = {
   transactions: "smartfinance_transactions",
   bills: "smartfinance_bills",
   budgets: "smartfinance_budgets",
+  categories: "smartfinance_categories",
+  creditCards: "smartfinance_credit_cards",
+  goals: "smartfinance_goals",
 };
+
+/**
+ * Estrutura hierárquica padrão: cada categoria de topo pode ter subcategorias.
+ * O usuário pode adicionar as suas próprias por cima disso (ver DEFAULT_CATEGORY_TREE + customCategories).
+ */
+export const DEFAULT_CATEGORY_TREE: Record<string, string[]> = {
+  Alimentação: ["Mercado", "Restaurante", "Delivery", "Padaria"],
+  Transporte: ["Combustível", "Uber/99", "Transporte público", "Estacionamento", "Manutenção do veículo"],
+  Moradia: ["Aluguel", "Condomínio", "Energia", "Água", "Internet", "IPTU"],
+  "Cartão de Crédito": [],
+  Saúde: ["Farmácia", "Plano de saúde", "Consultas", "Academia"],
+  Educação: ["Mensalidade", "Cursos", "Livros/Material"],
+  Lazer: ["Cinema/Shows", "Bares", "Passeios", "Jogos"],
+  Assinaturas: ["Streaming", "Música", "Serviços digitais"],
+  Vestuário: [],
+  Pets: ["Ração", "Veterinário", "Petshop"],
+  Viagem: ["Passagens", "Hospedagem", "Passeios"],
+  "Presentes/Doações": [],
+  "Impostos/Taxas": [],
+  "Casa/Manutenção": [],
+  Outros: [],
+  Salário: [],
+  "Freelance/Extra": [],
+};
+
+export const initialCategories: CategoryDef[] = [];
+
+export const initialCreditCards: CreditCard[] = [
+  {
+    id: "card-1",
+    name: "Nubank",
+    limit: 3000,
+    closingDay: 25,
+    dueDay: 10,
+    color: "#a855f7",
+  },
+  {
+    id: "card-2",
+    name: "Inter",
+    limit: 2000,
+    closingDay: 20,
+    dueDay: 5,
+    color: "#f97316",
+  },
+];
+
+export const initialGoals: Goal[] = [
+  {
+    id: "goal-1",
+    title: "Comprar notebook",
+    icon: "💻",
+    targetAmount: 5000,
+    currentAmount: 3250,
+    deadline: "2026-12-31",
+    createdAt: "2026-01-01",
+  },
+  {
+    id: "goal-2",
+    title: "Reserva de emergência",
+    icon: "🛟",
+    targetAmount: 15000,
+    currentAmount: 6200,
+    createdAt: "2026-01-01",
+  },
+];
 
 export const initialTransactions: Transaction[] = [
   { id: "1", date: "2026-01-15", description: "Salário Empresa X", amount: 5500.0, category: "Salário", type: "income" },

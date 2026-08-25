@@ -1,37 +1,45 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { Recurrence, Transaction } from "@/lib/types";
-import { CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { CategoryDef, CreditCard, Recurrence, Transaction } from "@/lib/types";
+import { getSubcategories, getTopLevelCategoriesByType } from "@/lib/categories";
 import { FieldWrapper, TextInput, SelectInput } from "./FormField";
 import { parseMoneyInput } from "@/lib/money";
 import { toLocalISODate } from "@/lib/finance";
-import { CategoryOptions } from "./CategoryOptions";
-
-const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => !(INCOME_CATEGORIES as readonly string[]).includes(c));
 
 interface TransactionFormProps {
   editingTransaction: Transaction | null;
-  onSave: (data: Omit<Transaction, "id">, recurrence: Recurrence) => void;
+  onSave: (data: Omit<Transaction, "id">, recurrence: Recurrence, installments?: number) => void;
   onCancelEdit: () => void;
+  customCategories: CategoryDef[];
+  cards: CreditCard[];
 }
 
 const todayISO = () => toLocalISODate();
 
-export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: TransactionFormProps) {
+export function TransactionForm({ editingTransaction, onSave, onCancelEdit, customCategories, cards }: TransactionFormProps) {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(todayISO);
   const [type, setType] = useState<"income" | "expense">("expense");
   const [category, setCategory] = useState("Alimentação");
+  const [subcategory, setSubcategory] = useState("");
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
+  const [cardId, setCardId] = useState("");
+  const [isInstallment, setIsInstallment] = useState(false);
+  const [installments, setInstallments] = useState("2");
   const [error, setError] = useState<string | null>(null);
+
+  const expenseCategories = useMemo(() => getTopLevelCategoriesByType(customCategories, "expense"), [customCategories]);
+  const incomeCategories = useMemo(() => getTopLevelCategoriesByType(customCategories, "income"), [customCategories]);
+  const subcategoryOptions = useMemo(() => getSubcategories(customCategories, category), [customCategories, category]);
 
   // BUG CORRIGIDO: o seletor "Repetir" ficava sempre travado durante a edição,
   // mesmo quando a transação editada era avulsa (sem série). Agora só fica
   // travado quando a transação já pertence a uma série existente, caso em que
   // alterar a recorrência aqui seria ambíguo (edita 1 ocorrência ou a série toda?).
   const belongsToExistingSeries = !!editingTransaction?.recurrenceGroupId;
+  const belongsToInstallmentGroup = !!editingTransaction?.installmentGroupId;
 
   const resetForm = () => {
     setDesc("");
@@ -39,7 +47,11 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
     setDate(todayISO());
     setType("expense");
     setCategory("Alimentação");
+    setSubcategory("");
     setRecurrence("none");
+    setCardId("");
+    setIsInstallment(false);
+    setInstallments("2");
     setError(null);
   };
 
@@ -50,7 +62,10 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
       setDate(editingTransaction.date);
       setType(editingTransaction.type);
       setCategory(editingTransaction.category);
+      setSubcategory(editingTransaction.subcategory ?? "");
       setRecurrence(editingTransaction.recurrenceGroupId ? editingTransaction.recurrence ?? "none" : "none");
+      setCardId(editingTransaction.cardId ?? "");
+      setIsInstallment(false);
       setError(null);
     } else {
       resetForm();
@@ -63,12 +78,20 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
   // vice-versa. Agora a lista de categorias é filtrada pelo tipo, e se a
   // categoria atual deixar de ser válida, ela é trocada automaticamente.
   useEffect(() => {
-    const validList = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    if (!(validList as readonly string[]).includes(category)) {
-      setCategory(validList[0]);
+    const validList = type === "income" ? incomeCategories : expenseCategories;
+    if (!validList.includes(category)) {
+      setCategory(validList[0] ?? "Outros");
+    }
+    if (type === "income") {
+      setCardId("");
+      setIsInstallment(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
+
+  useEffect(() => {
+    setSubcategory("");
+  }, [category]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -77,8 +100,25 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
       setError("Informe uma descrição e um valor maior que zero.");
       return;
     }
+    const installmentCount = Number(installments);
+    if (isInstallment && (!Number.isInteger(installmentCount) || installmentCount < 2)) {
+      setError("Informe um número de parcelas válido (mínimo 2).");
+      return;
+    }
     setError(null);
-    onSave({ description: desc.trim(), amount: parsedAmount, date, type, category }, recurrence);
+    onSave(
+      {
+        description: desc.trim(),
+        amount: parsedAmount,
+        date,
+        type,
+        category,
+        subcategory: subcategory || undefined,
+        cardId: cardId || undefined,
+      },
+      recurrence,
+      isInstallment ? installmentCount : undefined
+    );
     resetForm();
   };
 
@@ -141,7 +181,11 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
           </FieldWrapper>
           <FieldWrapper label="Categoria" htmlFor="tx-category">
             <SelectInput id="tx-category" value={category} onChange={(e) => setCategory(e.target.value)}>
-              <CategoryOptions type={type} />
+              {(type === "income" ? incomeCategories : expenseCategories).map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </SelectInput>
           </FieldWrapper>
           <FieldWrapper label="Repetir" htmlFor="tx-recurrence">
@@ -149,7 +193,7 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
               id="tx-recurrence"
               value={recurrence}
               onChange={(e) => setRecurrence(e.target.value as Recurrence)}
-              disabled={belongsToExistingSeries}
+              disabled={belongsToExistingSeries || isInstallment}
               title={belongsToExistingSeries ? "Esta transação já pertence a uma série recorrente" : undefined}
             >
               <option value="none">Não repetir</option>
@@ -158,13 +202,77 @@ export function TransactionForm({ editingTransaction, onSave, onCancelEdit }: Tr
             </SelectInput>
           </FieldWrapper>
         </div>
+
+        {subcategoryOptions.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <FieldWrapper label="Subcategoria (opcional)" htmlFor="tx-subcategory" className="md:col-span-2">
+              <SelectInput id="tx-subcategory" value={subcategory} onChange={(e) => setSubcategory(e.target.value)}>
+                <option value="">— Nenhuma —</option>
+                {subcategoryOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </SelectInput>
+            </FieldWrapper>
+          </div>
+        )}
+
+        {type === "expense" && cards.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <FieldWrapper label="Cartão (opcional)" htmlFor="tx-card">
+              <SelectInput id="tx-card" value={cardId} onChange={(e) => setCardId(e.target.value)}>
+                <option value="">— Nenhum / dinheiro —</option>
+                {cards.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    💳 {c.name}
+                  </option>
+                ))}
+              </SelectInput>
+            </FieldWrapper>
+            {cardId && !belongsToInstallmentGroup && (
+              <>
+                <label className="flex items-center gap-2 text-xs text-slate-400 pb-2.5">
+                  <input
+                    type="checkbox"
+                    checked={isInstallment}
+                    onChange={(e) => setIsInstallment(e.target.checked)}
+                    className="accent-cyan-500"
+                  />
+                  Compra parcelada
+                </label>
+                {isInstallment && (
+                  <FieldWrapper label="Número de parcelas" htmlFor="tx-installments">
+                    <TextInput
+                      id="tx-installments"
+                      type="number"
+                      min="2"
+                      max="48"
+                      value={installments}
+                      onChange={(e) => setInstallments(e.target.value)}
+                    />
+                  </FieldWrapper>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {isInstallment && Number(installments) >= 2 && amount && !isNaN(parseMoneyInput(amount)) && (
+          <p className="text-xs text-cyan-400 bg-cyan-950/30 border border-cyan-900/40 rounded-lg px-3 py-2">
+            Serão criadas {installments}x de aproximadamente{" "}
+            {(parseMoneyInput(amount) / Number(installments)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} a
+            partir de {new Date(date + "T00:00:00").toLocaleDateString("pt-BR")}.
+          </p>
+        )}
+
         {belongsToExistingSeries && (
           <p className="text-xs text-slate-500">
             Esta transação já faz parte de uma série recorrente. Para mudar a recorrência, exclua a série no extrato e
             cadastre novamente.
           </p>
         )}
-        {recurrence !== "none" && !belongsToExistingSeries && (
+        {recurrence !== "none" && !belongsToExistingSeries && !isInstallment && (
           <p className="text-xs text-cyan-400 bg-cyan-950/30 border border-cyan-900/40 rounded-lg px-3 py-2">
             {editingTransaction
               ? "Ao salvar, esta transação avulsa vira o início de uma nova série recorrente."

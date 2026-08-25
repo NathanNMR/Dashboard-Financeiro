@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bill, Budget, Recurrence, Transaction } from "@/lib/types";
-import { initialBills, initialBudgets, initialTransactions, STORAGE_KEYS } from "@/lib/constants";
+import { Bill, Budget, CategoryDef, CreditCard, Goal, Recurrence, Transaction } from "@/lib/types";
+import {
+  initialBills,
+  initialBudgets,
+  initialCategories,
+  initialCreditCards,
+  initialGoals,
+  initialTransactions,
+  STORAGE_KEYS,
+} from "@/lib/constants";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
   addOneMonth,
@@ -11,6 +19,7 @@ import {
   categorizeTransaction,
   currentMonthKey,
   generateId,
+  generateInstallments,
   generateRecurringOccurrences,
   toLocalISODate,
 } from "@/lib/finance";
@@ -28,6 +37,14 @@ import { TransactionsTable } from "@/components/TransactionsTable";
 import { CashFlowChart, ExpenseByCategoryChart, ExpenseProjectionChart } from "@/components/Charts";
 import { BudgetGoals } from "@/components/BudgetGoals";
 import { UpcomingDueAlert } from "@/components/UpcomingDueAlert";
+import { SmartInsights } from "@/components/SmartInsights";
+import { NotificationsPanel } from "@/components/NotificationsPanel";
+import { CreditCardsManager } from "@/components/CreditCardsManager";
+import { GoalsManager } from "@/components/GoalsManager";
+import { CategoryManager } from "@/components/CategoryManager";
+import { ReportsPage } from "@/components/ReportsPage";
+import { FinancialHealth } from "@/components/FinancialHealth";
+import { Section, SectionTabs } from "@/components/SectionTabs";
 
 function Dashboard() {
   const { notify } = useToast();
@@ -39,7 +56,14 @@ function Dashboard() {
   );
   const [bills, setBills, billsHydrated] = useLocalStorage<Bill[]>(STORAGE_KEYS.bills, initialBills);
   const [budgets] = useLocalStorage<Budget>(STORAGE_KEYS.budgets, initialBudgets);
+  const [cards, setCards, cardsHydrated] = useLocalStorage<CreditCard[]>(STORAGE_KEYS.creditCards, initialCreditCards);
+  const [goals, setGoals, goalsHydrated] = useLocalStorage<Goal[]>(STORAGE_KEYS.goals, initialGoals);
+  const [customCategories, setCustomCategories, categoriesHydrated] = useLocalStorage<CategoryDef[]>(
+    STORAGE_KEYS.categories,
+    initialCategories
+  );
 
+  const [section, setSection] = useState<Section>("dashboard");
   const [filterCategory, setFilterCategory] = useState("All");
   const [filterSearch, setFilterSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,7 +84,17 @@ function Dashboard() {
   }, [editingId]);
 
   // --- Transações ---
-  const handleSaveTransaction = (data: Omit<Transaction, "id">, recurrence: Recurrence) => {
+  const handleSaveTransaction = (data: Omit<Transaction, "id">, recurrence: Recurrence, installments?: number) => {
+    // Compra parcelada: gera N transações futuras (uma por mês) já relacionadas
+    // pelo mesmo installmentGroupId, cada uma com seu número de parcela.
+    if (!editingId && installments && installments >= 2) {
+      const occurrences = generateInstallments(data, data.amount, installments);
+      const newTransactions = occurrences.map((occ) => ({ id: generateId("inst-tx"), ...occ }));
+      setTransactions((prev) => [...newTransactions, ...prev]);
+      notify(`Compra parcelada em ${installments}x adicionada.`, "success");
+      return;
+    }
+
     if (editingId) {
       // Transação avulsa (sem série) recebeu uma recorrência ao ser editada:
       // ela vira o início de uma nova série, em vez de só editar 1 campo.
@@ -170,6 +204,64 @@ function Dashboard() {
     if (!ok) return;
     setBills((prev) => prev.filter((b) => b.id !== bill.id));
     notify("Compromisso excluído.", "info");
+  };
+
+  // --- Cartões de crédito ---
+  const handleAddCard = (card: CreditCard) => {
+    setCards((prev) => [card, ...prev]);
+    notify("Cartão adicionado.", "success");
+  };
+
+  const handleRemoveCard = async (id: string) => {
+    const card = cards.find((c) => c.id === id);
+    const ok = await confirm({
+      title: "Remover cartão?",
+      description: `"${card?.name}" será removido. As transações já lançadas nele não serão apagadas.`,
+      confirmLabel: "Remover",
+    });
+    if (!ok) return;
+    setCards((prev) => prev.filter((c) => c.id !== id));
+    notify("Cartão removido.", "info");
+  };
+
+  // --- Metas ---
+  const handleAddGoal = (goal: Goal) => {
+    setGoals((prev) => [goal, ...prev]);
+    notify("Meta adicionada.", "success");
+  };
+
+  const handleUpdateGoal = (id: string, currentAmount: number) => {
+    setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, currentAmount: roundMoney(currentAmount) } : g)));
+    notify("Aporte registrado na meta.", "success");
+  };
+
+  const handleRemoveGoal = async (id: string) => {
+    const goal = goals.find((g) => g.id === id);
+    const ok = await confirm({
+      title: "Remover meta?",
+      description: `"${goal?.title}" será removida permanentemente.`,
+      confirmLabel: "Remover",
+    });
+    if (!ok) return;
+    setGoals((prev) => prev.filter((g) => g.id !== id));
+    notify("Meta removida.", "info");
+  };
+
+  // --- Categorias ---
+  const handleAddCategory = (category: CategoryDef) => {
+    setCustomCategories((prev) => [...prev, category]);
+    notify("Categoria adicionada.", "success");
+  };
+
+  const handleRemoveCategory = async (name: string) => {
+    const ok = await confirm({
+      title: "Remover categoria?",
+      description: `"${name}" será removida da lista. Transações existentes que já usam essa categoria não são alteradas.`,
+      confirmLabel: "Remover",
+    });
+    if (!ok) return;
+    setCustomCategories((prev) => prev.filter((c) => c.name !== name));
+    notify("Categoria removida.", "info");
   };
 
   // --- Importação / Exportação CSV ---
@@ -351,7 +443,7 @@ function Dashboard() {
     return result;
   }, [monthlyData, recurringMonthlyExpenses]);
 
-  if (!txHydrated || !billsHydrated) {
+  if (!txHydrated || !billsHydrated || !cardsHydrated || !goalsHydrated || !categoriesHydrated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <p className="text-slate-400 text-sm animate-pulse">Carregando dashboard...</p>
@@ -364,39 +456,69 @@ function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         <DashboardHeader onImportCSV={handleFileUpload} onExportImage={handleExportImage} onExportCSV={handleExportCsv} />
 
-        <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} topCategory={topCategory} />
+        <SectionTabs active={section} onChange={setSection} />
 
-        <UpcomingDueAlert bills={bills} />
+        {section === "dashboard" && (
+          <>
+            <SummaryCards totalIncome={totalIncome} totalExpense={totalExpense} balance={balance} topCategory={topCategory} />
 
-        <BillsManager bills={bills} onAddBill={handleAddBill} onSettleBill={handleSettleBill} onDeleteBill={handleDeleteBill} />
+            <SmartInsights transactions={transactions} cards={cards} goals={goals} monthKey={currentMonthKey()} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          <CashFlowChart data={monthlyData} />
-          <ExpenseProjectionChart data={projectedData} />
-        </div>
+            <UpcomingDueAlert bills={bills} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          <ExpenseByCategoryChart transactions={transactions} />
-          <BudgetGoals budgets={budgets} spentByCategory={currentMonthExpensesByCategory} />
-        </div>
+            <BillsManager bills={bills} onAddBill={handleAddBill} onSettleBill={handleSettleBill} onDeleteBill={handleDeleteBill} />
 
-        <div ref={formRef} className="scroll-mt-6">
-          <TransactionForm
-            editingTransaction={editingTransaction}
-            onSave={handleSaveTransaction}
-            onCancelEdit={() => setEditingId(null)}
-          />
-        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+              <CashFlowChart data={monthlyData} />
+              <ExpenseProjectionChart data={projectedData} />
+            </div>
 
-        <TransactionsTable
-          transactions={filteredTransactions}
-          filterCategory={filterCategory}
-          filterSearch={filterSearch}
-          onFilterCategoryChange={setFilterCategory}
-          onFilterSearchChange={setFilterSearch}
-          onEdit={(t) => setEditingId(t.id)}
-          onDelete={handleDeleteTransaction}
-        />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+              <ExpenseByCategoryChart transactions={transactions} />
+              <BudgetGoals budgets={budgets} spentByCategory={currentMonthExpensesByCategory} />
+            </div>
+
+            <NotificationsPanel transactions={transactions} cards={cards} goals={goals} budgets={budgets} monthKey={currentMonthKey()} />
+
+            <div ref={formRef} className="scroll-mt-6">
+              <TransactionForm
+                editingTransaction={editingTransaction}
+                onSave={handleSaveTransaction}
+                onCancelEdit={() => setEditingId(null)}
+                customCategories={customCategories}
+                cards={cards}
+              />
+            </div>
+
+            <TransactionsTable
+              transactions={filteredTransactions}
+              filterCategory={filterCategory}
+              filterSearch={filterSearch}
+              onFilterCategoryChange={setFilterCategory}
+              onFilterSearchChange={setFilterSearch}
+              onEdit={(t) => setEditingId(t.id)}
+              onDelete={handleDeleteTransaction}
+            />
+          </>
+        )}
+
+        {section === "health" && (
+          <FinancialHealth transactions={transactions} budgets={budgets} cards={cards} goals={goals} monthKey={currentMonthKey()} />
+        )}
+
+        {section === "cards" && (
+          <CreditCardsManager cards={cards} transactions={transactions} onAddCard={handleAddCard} onRemoveCard={handleRemoveCard} />
+        )}
+
+        {section === "goals" && (
+          <GoalsManager goals={goals} onAddGoal={handleAddGoal} onUpdateGoal={handleUpdateGoal} onRemoveGoal={handleRemoveGoal} />
+        )}
+
+        {section === "categories" && (
+          <CategoryManager customCategories={customCategories} onAddCategory={handleAddCategory} onRemoveCategory={handleRemoveCategory} />
+        )}
+
+        {section === "reports" && <ReportsPage transactions={transactions} cards={cards} />}
       </div>
       {dialog}
     </div>
