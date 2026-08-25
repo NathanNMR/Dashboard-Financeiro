@@ -45,6 +45,7 @@ import { CategoryManager } from "@/components/CategoryManager";
 import { ReportsPage } from "@/components/ReportsPage";
 import { FinancialHealth } from "@/components/FinancialHealth";
 import { Section, SectionTabs } from "@/components/SectionTabs";
+import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 
 function Dashboard() {
   const { notify } = useToast();
@@ -68,6 +69,26 @@ function Dashboard() {
   const [filterSearch, setFilterSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  const [tutorialSeen, setTutorialSeen, tutorialHydrated] = useLocalStorage<boolean>(
+    STORAGE_KEYS.tutorialSeen,
+    false
+  );
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+
+  // Abre o tour guiado automaticamente na primeira visita (só depois de
+  // confirmar via localStorage que o usuário ainda não viu o tutorial).
+  useEffect(() => {
+    if (tutorialHydrated && !tutorialSeen) {
+      setTutorialOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialHydrated]);
+
+  const handleCloseTutorial = () => {
+    setTutorialOpen(false);
+    setTutorialSeen(true);
+  };
 
   const editingTransaction = useMemo(
     () => transactions.find((t) => t.id === editingId) ?? null,
@@ -443,7 +464,7 @@ function Dashboard() {
     return result;
   }, [monthlyData, recurringMonthlyExpenses]);
 
-  if (!txHydrated || !billsHydrated || !cardsHydrated || !goalsHydrated || !categoriesHydrated) {
+  if (!txHydrated || !billsHydrated || !cardsHydrated || !goalsHydrated || !categoriesHydrated || !tutorialHydrated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <p className="text-slate-400 text-sm animate-pulse">Carregando dashboard...</p>
@@ -454,7 +475,12 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
-        <DashboardHeader onImportCSV={handleFileUpload} onExportImage={handleExportImage} onExportCSV={handleExportCsv} />
+        <DashboardHeader
+          onImportCSV={handleFileUpload}
+          onExportImage={handleExportImage}
+          onExportCSV={handleExportCsv}
+          onOpenTutorial={() => setTutorialOpen(true)}
+        />
 
         <SectionTabs active={section} onChange={setSection} />
 
@@ -521,6 +547,7 @@ function Dashboard() {
         {section === "reports" && <ReportsPage transactions={transactions} cards={cards} />}
       </div>
       {dialog}
+      <OnboardingTutorial open={tutorialOpen} onClose={handleCloseTutorial} />
     </div>
   );
 }

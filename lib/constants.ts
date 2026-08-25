@@ -75,6 +75,7 @@ export const STORAGE_KEYS = {
   categories: "smartfinance_categories",
   creditCards: "smartfinance_credit_cards",
   goals: "smartfinance_goals",
+  tutorialSeen: "smartfinance_tutorial_seen",
 };
 
 /**
