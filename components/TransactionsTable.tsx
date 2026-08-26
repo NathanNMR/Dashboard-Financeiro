@@ -16,6 +16,7 @@ interface TransactionsTableProps {
   onFilterSearchChange: (value: string) => void;
   onEdit: (t: Transaction) => void;
   onDelete: (t: Transaction, scope: "single" | "series") => void;
+  onDeleteAll: () => void;
 }
 
 type SortKey = "date" | "amount";
@@ -37,6 +38,7 @@ export function TransactionsTable({
   onFilterSearchChange,
   onEdit,
   onDelete,
+  onDeleteAll,
 }: TransactionsTableProps) {
   const [filterType, setFilterType] = useState<"All" | "income" | "expense">("All");
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -88,7 +90,17 @@ export function TransactionsTable({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-slate-200">Extrato Consolidado</h3>
-          <MonthSwitcher months={monthKeys} value={selectedMonth} onChange={setSelectedMonth} className="sm:w-72" />
+          <div className="flex items-center gap-3">
+            <MonthSwitcher months={monthKeys} value={selectedMonth} onChange={setSelectedMonth} className="sm:w-72" />
+            {transactions.length > 0 && (
+              <button
+                onClick={onDeleteAll}
+                className="text-xs text-rose-400 hover:text-rose-300 hover:underline whitespace-nowrap"
+              >
+                🗑️ Apagar todas
+              </button>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
           <TextInput

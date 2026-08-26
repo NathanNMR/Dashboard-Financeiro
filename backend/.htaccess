@@ -1,0 +1,10 @@
+# Bloqueia acesso direto a arquivos que não devem ser servidos publicamente
+# (credenciais do banco, schema SQL, bibliotecas PHP). Só os arquivos dentro
+# de api/*.php devem ser acessíveis via navegador/fetch.
+<FilesMatch "^(config\.php|config\.example\.php|schema\.sql|bootstrap\.php)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_php.c>
+    php_flag display_errors off
+</IfModule>

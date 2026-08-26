@@ -28,6 +28,10 @@ import { importTransactionsCsv } from "@/lib/csv";
 import { csvEscape } from "@/lib/finance";
 import { roundMoney } from "@/lib/money";
 import { ToastProvider, useToast } from "@/components/Toast";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AuthGate } from "@/components/auth/AuthGate";
+import { AccountSwitcher } from "@/components/auth/AccountSwitcher";
+import { TeamManager } from "@/components/auth/TeamManager";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { SummaryCards } from "@/components/SummaryCards";
@@ -49,6 +53,7 @@ import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 
 function Dashboard() {
   const { notify } = useToast();
+  const { currentAccount } = useAuth();
   const { confirm, dialog } = useConfirmDialog();
 
   const [transactions, setTransactions, txHydrated] = useLocalStorage<Transaction[]>(
@@ -162,6 +167,29 @@ function Dashboard() {
       notify("Transação excluída.", "info");
     }
     if (editingId === t.id) setEditingId(null);
+  };
+
+  // Ação destrutiva de alto impacto (apaga TODAS as transações, incluindo
+  // séries recorrentes e parcelamentos): pede confirmação em duas etapas.
+  const handleDeleteAllTransactions = async () => {
+    if (transactions.length === 0) return;
+    const step1 = await confirm({
+      title: "Apagar todas as transações?",
+      description: `Isso removerá permanentemente ${transactions.length} transação(ões) do extrato — incluindo séries recorrentes e compras parceladas. Contas, cartões, metas e categorias não são afetados. Essa ação não pode ser desfeita.`,
+      confirmLabel: "Continuar",
+    });
+    if (!step1) return;
+
+    const step2 = await confirm({
+      title: "Tem certeza absoluta?",
+      description: "Confirme novamente para apagar todo o histórico de transações. Não há como recuperar depois.",
+      confirmLabel: "Sim, apagar tudo",
+    });
+    if (!step2) return;
+
+    setTransactions([]);
+    setEditingId(null);
+    notify("Todas as transações foram apagadas.", "info");
   };
 
   // --- Contas / Compromissos ---
@@ -480,9 +508,10 @@ function Dashboard() {
           onExportImage={handleExportImage}
           onExportCSV={handleExportCsv}
           onOpenTutorial={() => setTutorialOpen(true)}
+          accountSwitcher={<AccountSwitcher />}
         />
 
-        <SectionTabs active={section} onChange={setSection} />
+        <SectionTabs active={section} onChange={setSection} showTeam={currentAccount?.type === "company"} />
 
         {section === "dashboard" && (
           <>
@@ -524,6 +553,7 @@ function Dashboard() {
               onFilterSearchChange={setFilterSearch}
               onEdit={(t) => setEditingId(t.id)}
               onDelete={handleDeleteTransaction}
+              onDeleteAll={handleDeleteAllTransactions}
             />
           </>
         )}
@@ -545,6 +575,8 @@ function Dashboard() {
         )}
 
         {section === "reports" && <ReportsPage transactions={transactions} cards={cards} />}
+
+        {section === "team" && <TeamManager />}
       </div>
       {dialog}
       <OnboardingTutorial open={tutorialOpen} onClose={handleCloseTutorial} />
@@ -554,8 +586,12 @@ function Dashboard() {
 
 export default function FinancialDashboard() {
   return (
-    <ToastProvider>
-      <Dashboard />
-    </ToastProvider>
+    <AuthProvider>
+      <AuthGate>
+        <ToastProvider>
+          <Dashboard />
+        </ToastProvider>
+      </AuthGate>
+    </AuthProvider>
   );
 }
