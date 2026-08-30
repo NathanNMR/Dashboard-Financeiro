@@ -10,6 +10,10 @@
 return [
     'db' => [
         'host' => 'localhost',
+        // Porta do MySQL. Padrão é 3306, mas confira no seu painel (XAMPP
+        // Control Panel mostra a porta ao lado do módulo MySQL) — é comum
+        // mudar quando há mais de um MySQL instalado na mesma máquina.
+        'port' => 3306,
         'name' => 'seu_banco_aqui',
         'user' => 'seu_usuario_aqui',
         'pass' => 'sua_senha_aqui',

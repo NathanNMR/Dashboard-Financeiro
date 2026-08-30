@@ -2,9 +2,20 @@
 # (credenciais do banco, schema SQL, bibliotecas PHP). Só os arquivos dentro
 # de api/*.php devem ser acessíveis via navegador/fetch.
 <FilesMatch "^(config\.php|config\.example\.php|schema\.sql|bootstrap\.php)$">
-    Require all denied
+    <IfModule mod_authz_core.c>
+        # Apache 2.4+
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        # Apache 2.2 (versões mais antigas do XAMPP)
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 <IfModule mod_php.c>
+    php_flag display_errors off
+</IfModule>
+<IfModule mod_php7.c>
     php_flag display_errors off
 </IfModule>

@@ -6,10 +6,20 @@
 
 function send_cors_headers(): void
 {
-    $cfg = config();
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-    if (in_array($origin, $cfg['allowed_origins'], true)) {
+    // A checagem de CORS não pode depender de config() funcionar perfeitamente:
+    // se o config.php tiver algum problema, ainda queremos que o navegador
+    // veja o erro real (JSON) em vez de um erro de CORS que esconde a causa.
+    try {
+        $cfg = config();
+        $allowed = in_array($origin, $cfg['allowed_origins'], true);
+    } catch (Throwable $e) {
+        error_log('Falha ao carregar config.php ao montar CORS: ' . $e->getMessage());
+        $allowed = $origin !== '';
+    }
+
+    if ($allowed) {
         header("Access-Control-Allow-Origin: $origin");
     }
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');

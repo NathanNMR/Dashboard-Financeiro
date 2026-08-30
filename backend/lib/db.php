@@ -15,7 +15,8 @@ function db(): PDO
     $config = require __DIR__ . '/../config.php';
     $db = $config['db'];
 
-    $dsn = "mysql:host={$db['host']};dbname={$db['name']};charset={$db['charset']}";
+    $port = $db['port'] ?? 3306;
+    $dsn = "mysql:host={$db['host']};port={$port};dbname={$db['name']};charset={$db['charset']}";
 
     $pdo = new PDO($dsn, $db['user'], $db['pass'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
