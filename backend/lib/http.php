@@ -23,14 +23,14 @@ function send_cors_headers(): void
     }
 }
 
-function json_response(array $data, int $status = 200): never
+function json_response(array $data, int $status = 200)
 {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-function json_error(string $message, int $status = 400, array $extra = []): never
+function json_error(string $message, int $status = 400, array $extra = [])
 {
     json_response(array_merge(['error' => $message], $extra), $status);
 }
