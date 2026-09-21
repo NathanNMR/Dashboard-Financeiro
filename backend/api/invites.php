@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          VALUES (?, ?, ?, ?, ?, ?, ?)'
     )->execute([$inviteId, $accountId, $email, $role, $token, $payload['sub'], $expiresAt]);
 
-    $frontendUrl = config()['allowed_origins'][0] ?? '';
+    $frontendUrl = config()['frontend_url'] ?? '';
 
     json_response([
         'invite_id' => $inviteId,
