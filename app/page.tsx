@@ -2,16 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bill, Budget, CategoryDef, CreditCard, Goal, Recurrence, Transaction } from "@/lib/types";
-import {
-  initialBills,
-  initialBudgets,
-  initialCategories,
-  initialCreditCards,
-  initialGoals,
-  initialTransactions,
-  STORAGE_KEYS,
-} from "@/lib/constants";
+import { STORAGE_KEYS } from "@/lib/constants";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useFinanceData } from "@/hooks/useFinanceData";
 import {
   addOneMonth,
   calculateBillCurrentAmount,
@@ -56,18 +49,22 @@ function Dashboard() {
   const { currentAccount } = useAuth();
   const { confirm, dialog } = useConfirmDialog();
 
-  const [transactions, setTransactions, txHydrated] = useLocalStorage<Transaction[]>(
-    STORAGE_KEYS.transactions,
-    initialTransactions
-  );
-  const [bills, setBills, billsHydrated] = useLocalStorage<Bill[]>(STORAGE_KEYS.bills, initialBills);
-  const [budgets] = useLocalStorage<Budget>(STORAGE_KEYS.budgets, initialBudgets);
-  const [cards, setCards, cardsHydrated] = useLocalStorage<CreditCard[]>(STORAGE_KEYS.creditCards, initialCreditCards);
-  const [goals, setGoals, goalsHydrated] = useLocalStorage<Goal[]>(STORAGE_KEYS.goals, initialGoals);
-  const [customCategories, setCustomCategories, categoriesHydrated] = useLocalStorage<CategoryDef[]>(
-    STORAGE_KEYS.categories,
-    initialCategories
-  );
+  const {
+    transactions,
+    setTransactions,
+    bills,
+    setBills,
+    budgets,
+    cards,
+    setCards,
+    goals,
+    setGoals,
+    customCategories,
+    setCustomCategories,
+    isHydrated: financeHydrated,
+    syncStatus,
+    syncError,
+  } = useFinanceData();
 
   const [section, setSection] = useState<Section>("dashboard");
   const [filterCategory, setFilterCategory] = useState("All");
@@ -492,7 +489,7 @@ function Dashboard() {
     return result;
   }, [monthlyData, recurringMonthlyExpenses]);
 
-  if (!txHydrated || !billsHydrated || !cardsHydrated || !goalsHydrated || !categoriesHydrated || !tutorialHydrated) {
+  if (!financeHydrated || !tutorialHydrated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <p className="text-slate-400 text-sm animate-pulse">Carregando dashboard...</p>
@@ -503,6 +500,18 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+        {(syncStatus === "saving" || syncError) && (
+          <div
+            role="status"
+            className={`rounded-lg border px-3 py-2 text-xs ${
+              syncError
+                ? "border-rose-900/50 bg-rose-950/30 text-rose-300"
+                : "border-cyan-900/40 bg-cyan-950/20 text-cyan-300"
+            }`}
+          >
+            {syncError ?? "Sincronizando dados com o servidor..."}
+          </div>
+        )}
         <DashboardHeader
           onImportCSV={handleFileUpload}
           onExportImage={handleExportImage}
