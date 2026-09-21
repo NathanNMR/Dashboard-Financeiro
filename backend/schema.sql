@@ -189,8 +189,22 @@ CREATE TABLE IF NOT EXISTS credit_cards (
 
 -- Liga transactions.card_id → credit_cards.id (adicionada depois pra evitar
 -- problema de ordem de criação das tabelas).
-ALTER TABLE transactions
-  ADD CONSTRAINT fk_tx_card FOREIGN KEY (card_id) REFERENCES credit_cards(id) ON DELETE SET NULL;
+SET @fk_tx_card_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.TABLE_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'transactions'
+    AND CONSTRAINT_NAME = 'fk_tx_card'
+    AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+SET @fk_tx_card_sql = IF(
+  @fk_tx_card_exists = 0,
+  'ALTER TABLE transactions ADD CONSTRAINT fk_tx_card FOREIGN KEY (card_id) REFERENCES credit_cards(id) ON DELETE SET NULL',
+  'SELECT 1'
+);
+PREPARE fk_tx_card_stmt FROM @fk_tx_card_sql;
+EXECUTE fk_tx_card_stmt;
+DEALLOCATE PREPARE fk_tx_card_stmt;
 
 -- ----------------------------------------------------------------------------
 -- goals (metas de poupança nomeadas)
