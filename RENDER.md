@@ -52,3 +52,5 @@ para aplicar o schema a partir de um ambiente que tenha as variáveis de banco c
 ## Importante
 
 Dados financeiros agora são persistidos no MySQL por conta financeira. O `localStorage` é mantido apenas para preferências locais e autenticação atual.
+
+A branch `chatgpt/render-ready` também gera automaticamente um artefato ZIP pelo GitHub Actions.
