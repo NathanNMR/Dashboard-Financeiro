@@ -7,27 +7,33 @@
 function send_cors_headers(): void
 {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowed = false;
 
-    // A checagem de CORS não pode depender de config() funcionar perfeitamente:
-    // se o config.php tiver algum problema, ainda queremos que o navegador
-    // veja o erro real (JSON) em vez de um erro de CORS que esconde a causa.
     try {
         $cfg = config();
-        $allowed = in_array($origin, $cfg['allowed_origins'], true);
+        $allowedOrigins = $cfg['allowed_origins'] ?? [];
+        $allowed = $origin !== '' && in_array($origin, $allowedOrigins, true);
     } catch (Throwable $e) {
-        error_log('Falha ao carregar config.php ao montar CORS: ' . $e->getMessage());
-        $allowed = $origin !== '';
+        // Fail closed: configuração inválida nunca amplia permissões de CORS.
+        error_log('Falha ao carregar configuração de CORS: ' . $e->getMessage());
     }
 
     if ($allowed) {
         header("Access-Control-Allow-Origin: $origin");
+        header('Vary: Origin');
     }
+
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Max-Age: 600');
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, private');
 
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        if ($origin !== '' && !$allowed) {
+            http_response_code(403);
+            exit;
+        }
         http_response_code(204);
         exit;
     }
@@ -45,15 +51,19 @@ function json_error(string $message, int $status = 400, array $extra = [])
     json_response(array_merge(['error' => $message], $extra), $status);
 }
 
-/** Lê e decodifica o corpo JSON da requisição. Retorna [] se vazio/inválido. */
+/** Lê e decodifica o corpo JSON. Responde 400 se JSON não vazio for inválido. */
 function request_body(): array
 {
     $raw = file_get_contents('php://input');
     if (!$raw) {
         return [];
     }
+
     $data = json_decode($raw, true);
-    return is_array($data) ? $data : [];
+    if (!is_array($data)) {
+        json_error('JSON inválido.', 400);
+    }
+    return $data;
 }
 
 function require_fields(array $body, array $fields): void

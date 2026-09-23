@@ -1,3 +1,5 @@
+import type { Bill, Budget, CategoryDef, CreditCard, Goal, Transaction } from "./types";
+
 // Cliente HTTP para a API PHP (backend/). A URL base vem de uma env var
 // definida em build-time — necessário porque o frontend é exportado como
 // site estático (output: "export") e não tem servidor Node por trás.
@@ -49,6 +51,15 @@ export interface AuthUser {
   email: string;
 }
 
+export interface FinanceSnapshot {
+  transactions: Transaction[];
+  bills: Bill[];
+  budgets: Budget;
+  cards: CreditCard[];
+  goals: Goal[];
+  categories: CategoryDef[];
+}
+
 export const api = {
   register: (payload: { name: string; email: string; password: string; accountType: "personal" | "company"; accountName?: string }) =>
     request<{ token: string; user: AuthUser; account: AccountRef }>("/register.php", { method: "POST", body: payload }),
@@ -78,6 +89,16 @@ export const api = {
 
   removeMember: (token: string, payload: { account_id: string; user_id: string }) =>
     request<{ success: true }>("/members.php", { method: "DELETE", token, body: payload }),
+
+  getSnapshot: (token: string, accountId: string) =>
+    request<FinanceSnapshot>(`/snapshot.php?account_id=${encodeURIComponent(accountId)}`, { token }),
+
+  saveSnapshot: (token: string, accountId: string, snapshot: FinanceSnapshot) =>
+    request<{ success: true }>("/snapshot.php", {
+      method: "PUT",
+      token,
+      body: { account_id: accountId, snapshot },
+    }),
 };
 
 export { API_BASE_URL };
