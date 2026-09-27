@@ -28,10 +28,20 @@ if ($sql === false) {
 
 try {
     $pdo = db();
-    $pdo->exec($sql);
+    // PDO/MySQL não consome de forma portável os resultados de várias
+    // instruções em um único exec(). O schema não contém ponto e vírgula
+    // dentro de strings SQL; removemos comentários de linha e executamos
+    // cada instrução separadamente.
+    $withoutComments = preg_replace('/^\s*--[^\r\n]*/m', '', $sql);
+    foreach (explode(';', $withoutComments) as $statement) {
+        if (trim($statement) !== '') {
+            $pdo->exec($statement);
+        }
+    }
     $userLiteral = $pdo->quote($appUser);
     $passwordLiteral = $pdo->quote($appPassword);
     $pdo->exec("CREATE USER IF NOT EXISTS {$userLiteral}@'%' IDENTIFIED BY {$passwordLiteral}");
+    $pdo->exec("ALTER USER {$userLiteral}@'%' IDENTIFIED BY {$passwordLiteral}");
     $pdo->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON `{$database}`.* TO {$userLiteral}@'%'");
     fwrite(STDOUT, "Schema aplicado com sucesso.\n");
 } catch (Throwable $e) {
