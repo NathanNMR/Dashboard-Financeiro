@@ -1,18 +1,21 @@
 FROM php:8.3-apache
 
 RUN docker-php-ext-install pdo_mysql \
-    && a2enmod headers rewrite
+    && a2enmod headers rewrite \
+    && sed -i 's/Listen 80/Listen 10000/' /etc/apache2/ports.conf \
+    && sed -i 's/<VirtualHost \*:80>/<VirtualHost *:10000>/' /etc/apache2/sites-available/000-default.conf
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html
+ENV PORT=10000
 
 WORKDIR /var/www/html
 COPY backend/ /var/www/html/
 
 RUN chown -R www-data:www-data /var/www/html
 
-EXPOSE 80
+EXPOSE 10000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD php -r 'exit(@file_get_contents("http://127.0.0.1/api/health.php") === false ? 1 : 0);'
+  CMD php -r 'exit(@file_get_contents("http://127.0.0.1:10000/api/health.php") === false ? 1 : 0);'
 
 CMD ["sh", "-c", "if [ \"$RUN_DB_MIGRATION\" = \"1\" ]; then php scripts/migrate.php || exit 1; fi; exec apache2-foreground"]
