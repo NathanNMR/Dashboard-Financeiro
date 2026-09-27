@@ -30,6 +30,7 @@ function config(): array
             'user' => getenv('DB_USER') ?: '',
             'pass' => getenv('DB_PASSWORD') ?: '',
             'charset' => 'utf8mb4',
+            'ssl_ca_pem' => getenv('DB_SSL_CA_PEM') ?: '',
         ],
         'jwt_secret' => getenv('JWT_SECRET') ?: '',
         'jwt_ttl_seconds' => (int) (getenv('JWT_TTL_SECONDS') ?: 86400),
@@ -59,12 +60,33 @@ function db(): PDO
     $db = config()['db'];
     $dsn = "mysql:host={$db['host']};port={$db['port']};dbname={$db['name']};charset={$db['charset']}";
 
-    $pdo = new PDO($dsn, $db['user'], $db['pass'], [
+    $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
         PDO::ATTR_TIMEOUT => 5,
-    ]);
+    ];
+
+    // Bancos externos como Aiven usam TLS. O certificado CA é fornecido como
+    // variável de ambiente e existe em disco apenas durante a conexão.
+    $caPath = null;
+    if (!empty($db['ssl_ca_pem'])) {
+        $caPath = tempnam(sys_get_temp_dir(), 'smartfinance-ca-');
+        if ($caPath === false || file_put_contents($caPath, $db['ssl_ca_pem']) === false) {
+            throw new RuntimeException('Não foi possível preparar o certificado CA do banco.');
+        }
+        chmod($caPath, 0600);
+        $options[PDO::MYSQL_ATTR_SSL_CA] = $caPath;
+        $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+    }
+
+    try {
+        $pdo = new PDO($dsn, $db['user'], $db['pass'], $options);
+    } finally {
+        if ($caPath !== null && is_file($caPath)) {
+            unlink($caPath);
+        }
+    }
 
     return $pdo;
 }
