@@ -15,4 +15,4 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD php -r 'exit(@file_get_contents("http://127.0.0.1/api/health.php") === false ? 1 : 0);'
 
-CMD ["apache2-foreground"]
+CMD ["sh", "-c", "if [ \"$RUN_DB_MIGRATION\" = \"1\" ]; then php scripts/migrate.php || exit 1; fi; exec apache2-foreground"]
