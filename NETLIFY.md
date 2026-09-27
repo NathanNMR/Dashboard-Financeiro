@@ -1,39 +1,37 @@
 # Frontend no Netlify e API no Render
 
-O Netlify hospeda o frontend estático em `out/`. O cadastro e o login precisam da API PHP e do MySQL; publicar só o frontend não cria usuários.
+O frontend está em https://nmrfinance.netlify.app/. Cadastro e login precisam da API PHP e do MySQL. O arquivo `render.yaml` deste repositório cria **somente a API** no plano gratuito do Render; o frontend permanece no Netlify.
 
-## Valores para esta implantação
+O banco `smartfinance` já existe no serviço Aiven `jurassihealth-mysql`. Ele compartilha a capacidade gratuita de 1 GB com `clinica_jurassihealth` e pode desligar após inatividade. A primeira implantação cria as tabelas e o usuário SQL `smartfinance_app`, com acesso limitado ao banco `smartfinance`.
 
-O banco `smartfinance` já foi criado no serviço Aiven `jurassihealth-mysql`. Ele compartilha a capacidade gratuita de 1 GB com `clinica_jurassihealth` e pode desligar após inatividade. A conexão do SmartFinance usa outro banco e um usuário SQL limitado a ele.
+## 1. Criar a API no seu navegador
 
-No Render, crie um **Web Service** de `NathanNMR/Dashboard-Financeiro`, branch `main`, runtime **Docker**, plano **Free**, nome `smartfinance-api`, Dockerfile na raiz e health check `/api/health.php`. O Apache escuta na porta 10000.
+1. No Render, escolha **New → Blueprint**, conecte sua conta GitHub e selecione `NathanNMR/Dashboard-Financeiro`, branch `main`. Revise o serviço `smartfinance-api` antes de aplicar o Blueprint. Ele usa Docker, plano Free e health check `/api/health.php`; o Apache escuta na porta 10000.
+2. O Blueprint já define `DB_HOST`, `DB_PORT=20110`, `DB_NAME=smartfinance`, `DB_USER=smartfinance_app`, `DB_MIGRATE_USER=avnadmin`, `ALLOWED_ORIGINS` e `FRONTEND_URL` para a URL atual do Netlify. O Render gera `JWT_SECRET`.
+3. Preencha os campos solicitados pelo Render:
 
-| Variável Render | Valor |
+| Variável | Valor a informar |
 | --- | --- |
-| `DB_HOST` | `jurassihealth-mysql-nathannmr.d.aivencloud.com` |
-| `DB_PORT` | `20110` |
-| `DB_NAME` | `smartfinance` |
-| `DB_USER` | `smartfinance_app` |
-| `DB_PASSWORD` | Gere uma senha longa no Render e guarde-a lá. |
-| `DB_MIGRATE_USER` | `avnadmin` (somente na primeira implantação) |
-| `DB_MIGRATE_PASSWORD` | Senha de `avnadmin` na Aiven (somente na primeira implantação) |
-| `DB_SSL_CA_PEM` | Certificado CA completo em Aiven → serviço → Overview → Connection information. |
-| `RUN_DB_MIGRATION` | `1` na primeira implantação; depois `0`. |
-| `JWT_SECRET` | Gere um valor aleatório com pelo menos 32 caracteres no Render. |
-| `ALLOWED_ORIGINS` | `https://nmrfinance.netlify.app` |
-| `FRONTEND_URL` | `https://nmrfinance.netlify.app` |
+| `DB_PASSWORD` | Crie uma senha longa e nova para `smartfinance_app`; a migração atribuirá essa senha ao usuário SQL. |
+| `DB_MIGRATE_PASSWORD` | Senha atual de `avnadmin` no Aiven, somente para a primeira implantação. |
+| `DB_SSL_CA_PEM` | Certificado CA completo do serviço Aiven, incluindo as linhas `BEGIN CERTIFICATE` e `END CERTIFICATE`. |
+| `RUN_DB_MIGRATION` | `1` na primeira implantação. |
 
-Não coloque senhas no GitHub ou em mensagens. Depois do primeiro health check `ok`, retire `DB_MIGRATE_USER` e `DB_MIGRATE_PASSWORD`, altere `RUN_DB_MIGRATION` para `0` e salve/republique o serviço. O usuário `smartfinance_app` já terá sido criado no banco com acesso apenas a `smartfinance`.
+Encontre o certificado na página do serviço Aiven, em **Overview → Connection information**. Cole o PEM inteiro no campo do Render, preservando as quebras de linha. Não coloque senhas nem o certificado em arquivos do repositório ou mensagens.
 
-1. Prepare um banco MySQL acessível pela API. O banco deve existir antes da migração; o script usa o banco definido em `DB_NAME`. Não coloque credenciais no GitHub.
-2. No Render, crie o serviço Docker da API usando este repositório, `Dockerfile` na raiz, e configure `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (usuário exclusivo da aplicação), `JWT_SECRET` (pelo menos 32 caracteres), `ALLOWED_ORIGINS` e `FRONTEND_URL`. Para Aiven, cole o certificado CA completo em `DB_SSL_CA_PEM`; a conexão verificará o certificado TLS. Defina `ALLOWED_ORIGINS` com a URL exata do site Netlify, por exemplo `https://nmrfinance.netlify.app`, sem barra final.
-3. Na primeira publicação, configure `DB_MIGRATE_USER` e `DB_MIGRATE_PASSWORD` com o usuário administrador do serviço MySQL e `RUN_DB_MIGRATION=1`. O startup cria as tabelas e o usuário da aplicação com permissões apenas em `DB_NAME`. Depois que o health check passar, altere `RUN_DB_MIGRATION=0`, remova as duas variáveis administrativas e publique novamente. Mantenha `DB_USER` e `DB_PASSWORD` como as credenciais exclusivas da aplicação.
-4. Verifique `https://<api>.onrender.com/api/health.php`. O resultado deve conter `"status":"ok"` e `"database":"ok"`. Uma resposta 503 indica problema com o banco.
-5. No Netlify, importe o repositório. O `netlify.toml` define o build e a pasta `out`. Em **Site configuration → Environment variables**, defina `NEXT_PUBLIC_API_URL=https://<api>.onrender.com/api` (sem barra final) e faça novo deploy. Essa variável entra nos arquivos gerados durante o build.
-6. Cadastre uma conta no site. Se houver erro, confira a requisição `register.php` em DevTools → Network: erro de rede costuma indicar URL, servidor ou CORS; HTTP 409 indica e-mail já cadastrado; HTTP 500/503 indica problema no backend ou banco. Para testar CORS, confira se o cabeçalho `Access-Control-Allow-Origin` corresponde à URL do frontend.
+4. Aplique o Blueprint e acompanhe os logs. Quando a implantação terminar, abra `https://smartfinance-api.onrender.com/api/health.php` (ou a URL exata indicada pelo Render). O JSON deve conter `"status":"ok"` e `"database":"ok"`.
+5. Após o primeiro health check bem-sucedido, em **Environment** do serviço no Render, mude `RUN_DB_MIGRATION` para `0` e exclua `DB_MIGRATE_PASSWORD` e `DB_MIGRATE_USER`. Salve e aguarde a nova implantação. O usuário `smartfinance_app` continua com sua senha em `DB_PASSWORD`. O Blueprint não reescreve as variáveis marcadas com `sync: false` nas sincronizações futuras.
 
-## Domínio personalizado
+Se a implantação inicial falhar, mantenha `RUN_DB_MIGRATION=1` e as credenciais administrativas enquanto corrige o erro. A migração pode ser repetida. Uma resposta 503 no health check aponta para falha de conexão com o banco; verifique os logs e o estado do serviço Aiven.
 
-Depois que o cadastro funcionar na URL `netlify.app`, abra **Domain management → Production domains → Add a domain** no Netlify. Informe um domínio que você possui e siga os registros DNS específicos mostrados pelo Netlify para seu caso. Se ainda não tiver um domínio, é preciso registrar um. Aguarde a verificação DNS e HTTPS.
+## 2. Conectar o Netlify
 
-Ao trocar a URL pública, atualize `ALLOWED_ORIGINS` e `FRONTEND_URL` na API para `https://seu-dominio` e republique o frontend se mudar `NEXT_PUBLIC_API_URL`. Durante a transição, `ALLOWED_ORIGINS` pode conter a URL `netlify.app` e o domínio novo, separadas por vírgula. O domínio da API pode continuar `onrender.com` ou ser configurado separadamente, por exemplo `api.seu-dominio`.
+No Netlify, abra o site existente em **Site configuration → Environment variables**. Defina `NEXT_PUBLIC_API_URL=https://smartfinance-api.onrender.com/api`, substituindo o host pela URL real do Render e sem barra final. Inicie um novo deploy do frontend: essa variável é incorporada durante o build.
+
+Teste o cadastro em https://nmrfinance.netlify.app/. Se falhar, inspecione `register.php` em DevTools → Network. Erro de rede indica URL, servidor ou CORS; HTTP 409 indica e-mail já cadastrado; HTTP 500/503 sugere problema na API ou no banco. `Access-Control-Allow-Origin` deve corresponder à origem do site.
+
+## 3. Domínio personalizado, quando você tiver um
+
+Depois de comprar um domínio e confirmar que o cadastro funciona, use **Domain management → Production domains → Add a domain** no Netlify. Siga os registros DNS apresentados pelo Netlify e aguarde a validação DNS e HTTPS.
+
+Atualize `ALLOWED_ORIGINS` e `FRONTEND_URL` no Render com a nova URL HTTPS. Durante a transição, `ALLOWED_ORIGINS` pode conter a URL `netlify.app` e o domínio novo separados por vírgula. A API pode continuar em `onrender.com`; se optar por um subdomínio próprio para ela, atualize também `NEXT_PUBLIC_API_URL` no Netlify e faça novo deploy.
