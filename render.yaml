@@ -3,6 +3,7 @@ services:
     name: smartfinance-api
     runtime: docker
     dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/health.php
     autoDeployTrigger: commit
     envVars:
@@ -23,14 +24,4 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false
       - key: FRONTEND_URL
-        sync: false
-
-  - type: web
-    name: smartfinance
-    runtime: static
-    buildCommand: npm ci && npm run typecheck && npm run build
-    staticPublishPath: ./out
-    autoDeployTrigger: commit
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
         sync: false

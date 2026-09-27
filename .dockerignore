@@ -1,8 +1,6 @@
-node_modules
-.next
-out
 .git
-.github
-*.log
-.env*
-backend/config.php
+.gitignore
+.env
+config.php
+README.md
+*.zip

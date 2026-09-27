@@ -1,175 +1,114 @@
-# SmartFinance — Dashboard Financeiro
+# SmartFinance API — pacote standalone para Render
 
-Dashboard de controle financeiro pessoal desenvolvido com **Next.js, React, TypeScript, Tailwind CSS e Recharts**.
+Este branch contém somente o backend PHP/MySQL do projeto SmartFinance,
+separado do frontend Next.js para ser publicado como um **Web Service Docker**
+no Render.
 
-O projeto permite registrar receitas e despesas, acompanhar contas, definir limites de gastos, visualizar gráficos e estimar despesas futuras. A versão atual mantém os dados no navegador com `localStorage`, mas a estrutura está preparada para uma futura API e banco de dados.
-
-## ✨ Funcionalidades
-
-- 📊 Resumo de receitas, despesas e saldo
-- 💳 Cadastro e edição de transações
-- 🔁 Transações recorrentes mensais e anuais
-- 🧾 Contas a pagar e rendas a receber
-- 📅 Navegação de contas por mês
-- 💰 Cálculo de juros e multa para contas atrasadas
-- 🎯 Metas de gastos por categoria
-- 📈 Gráfico de fluxo de caixa
-- 🥧 Distribuição de despesas por categoria
-- 🔮 Projeção de despesas com regressão linear
-- 📥 Importação de CSV
-- 📤 Exportação de transações para CSV
-- 🖼️ Exportação do resumo para imagem
-- 🔔 Alertas e confirmações para operações importantes
-- 📱 Interface responsiva
-- ♿ Componentes com foco em acessibilidade
-
-## 🛠️ Tecnologias
-
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Recharts
-- LocalStorage para persistência local
-
-## 🚀 Executando localmente
-
-Pré-requisitos:
-
-- Node.js 20 ou superior
-- npm
-
-Instalação:
-
-```bash
-npm install
-```
-
-Desenvolvimento:
-
-```bash
-npm run dev
-```
-
-Depois abra:
+## Estrutura
 
 ```text
-http://localhost:3000
+├── api/                  # Endpoints REST
+├── lib/                  # Banco, JWT, HTTP e autorização
+├── scripts/              # Migração do schema
+├── .htaccess             # Proteção dos arquivos internos
+├── bootstrap.php         # Bootstrap compartilhado
+├── config.example.php    # Configuração local opcional
+├── schema.sql            # Estrutura do MySQL
+├── Dockerfile            # Imagem PHP 8.3 + Apache + PDO MySQL
+├── render.yaml           # Blueprint do Render
+└── .env.example          # Variáveis necessárias
 ```
 
-Build de produção:
+## 1. Banco MySQL
+
+Antes de usar cadastro/login, crie um banco MySQL e aplique `schema.sql`.
+
+Variáveis necessárias:
+
+```env
+DB_HOST=...
+DB_PORT=3306
+DB_NAME=...
+DB_USER=...
+DB_PASSWORD=...
+```
+
+## 2. Variáveis no Render
+
+Além do banco, configure:
+
+```env
+JWT_SECRET=<chave aleatória longa, mínimo 32 caracteres>
+JWT_TTL_SECONDS=86400
+ALLOWED_ORIGINS=https://SEU-SITE.netlify.app
+FRONTEND_URL=https://SEU-SITE.netlify.app
+```
+
+Se usar o `render.yaml` como Blueprint, o Render gera `JWT_SECRET`
+automaticamente e solicita os valores marcados como `sync: false`.
+
+## 3. Deploy no Render
+
+### Blueprint
+
+1. No Render, escolha **New > Blueprint**.
+2. Selecione o repositório `NathanNMR/Dashboard-Financeiro`.
+3. Selecione a branch `render-api`.
+4. O Render encontrará `render.yaml`.
+5. Preencha as variáveis do MySQL e as URLs do frontend.
+6. Crie o serviço.
+
+### Web Service
+
+1. No Render, escolha **New > Web Service**.
+2. Conecte `NathanNMR/Dashboard-Financeiro`.
+3. Selecione a branch `render-api`.
+4. Runtime/Language: **Docker**.
+5. Dockerfile: `./Dockerfile`.
+6. Health Check Path: `/api/health.php`.
+7. Adicione todas as variáveis descritas acima.
+8. Faça o deploy.
+
+## 4. Teste
+
+Quando estiver no ar, abra:
+
+```text
+https://SEU-SERVICO.onrender.com/api/health.php
+```
+
+Com banco acessível, a resposta esperada é:
+
+```json
+{
+  "status": "ok",
+  "service": "smartfinance-api",
+  "database": "ok"
+}
+```
+
+Teste de cadastro:
 
 ```bash
-npm run build
-npm start
+curl -X POST https://SEU-SERVICO.onrender.com/api/register.php \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Teste","email":"teste@example.com","password":"senha12345","accountType":"personal"}'
 ```
 
-## 📁 Estrutura
+## 5. Conectar ao frontend no Netlify
 
-```text
-app/
-  page.tsx              # Composição principal do dashboard
-  globals.css           # Estilos globais
+Depois que a API estiver funcionando, crie no frontend a variável:
 
-components/
-  BillsManager.tsx      # Contas e compromissos
-  BudgetGoals.tsx       # Metas de gastos
-  Charts.tsx             # Gráficos
-  TransactionForm.tsx   # Cadastro/edição
-  TransactionsTable.tsx # Extrato
-  ...
-
-hooks/
-  useLocalStorage.ts    # Persistência local
-
-lib/
-  constants.ts          # Categorias e dados iniciais
-  csv.ts                # Importação robusta de CSV
-  finance.ts            # Regras e cálculos financeiros
-  imageExport.ts        # Exportação de imagem
-  money.ts              # Operações seguras com centavos
-  types.ts              # Tipos TypeScript
+```env
+NEXT_PUBLIC_API_URL=https://SEU-SERVICO.onrender.com/api
 ```
 
-## 📥 Formato de importação CSV
+Faça um novo deploy do frontend após alterar essa variável.
 
-A importação aceita CSV com `,` ou `;` e reconhece português e inglês para o tipo da transação.
+## Segurança
 
-Exemplo brasileiro:
-
-```csv
-data;descricao;valor;tipo
-2026-08-01;Salário;5000,00;receita
-2026-08-03;Supermercado;350,90;despesa
-2026-08-05;Internet;120,00;despesa
-```
-
-Também são aceitos:
-
-- `income` / `expense`
-- `receita` / `despesa`
-- `entrada` / `saída`
-- valores como `1250.50` e `1.250,50`
-- arquivos com BOM UTF-8
-- campos entre aspas
-
-Linhas inválidas são ignoradas e informadas ao usuário.
-
-## 💾 Persistência atual
-
-A aplicação atualmente usa `localStorage`. Isso é adequado para desenvolvimento, demonstração e uso pessoal em um único navegador, mas não é a arquitetura ideal para um sistema financeiro multi-dispositivo.
-
-### Próxima evolução recomendada
-
-```text
-Next.js
-   ↓
-API / Server Actions
-   ↓
-Autenticação
-   ↓
-Banco de dados
-   ├── usuários
-   ├── transações
-   ├── contas
-   ├── categorias
-   ├── orçamentos
-   └── metas
-```
-
-Essa evolução permitirá sincronização entre dispositivos, login, backup e persistência no servidor.
-
-## 🔐 Segurança
-
-Como esta versão usa armazenamento local, **não trate o `localStorage` como armazenamento seguro para informações sensíveis**.
-
-Em uma versão com backend, recomenda-se:
-
-- autenticação baseada em sessão;
-- autorização por usuário;
-- validação no servidor;
-- queries parametrizadas/ORM;
-- proteção contra CSRF quando aplicável;
-- variáveis de ambiente para credenciais;
-- backup do banco;
-- logs sem dados financeiros desnecessários.
-
-## 📌 Roadmap
-
-- [ ] API backend
-- [ ] Banco MySQL/PostgreSQL
-- [ ] Cadastro e login
-- [ ] Sincronização entre dispositivos
-- [ ] Categorias personalizadas
-- [ ] Exportação PDF
-- [ ] Relatórios mensais
-- [ ] Comparação entre períodos
-- [ ] Backup e restauração
-- [ ] Testes automatizados
-- [ ] Deploy de produção
-
-## 👨‍💻 Projeto
-
-**SmartFinance — Dashboard Financeiro**
-
-Projeto desenvolvido para estudo e portfólio, com foco em React/Next.js, TypeScript, componentes reutilizáveis e regras de negócio financeiras.
+- Não faça commit de `.env` nem `config.php`.
+- Não coloque credenciais reais em `render.yaml`.
+- Mantenha `JWT_SECRET` longo e aleatório.
+- `ALLOWED_ORIGINS` deve conter somente os domínios autorizados.
+- Quando o frontend ganhar domínio personalizado, atualize `ALLOWED_ORIGINS` e `FRONTEND_URL`.
