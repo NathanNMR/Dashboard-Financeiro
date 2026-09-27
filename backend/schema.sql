@@ -23,14 +23,9 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------------------------------------------------------
--- Criação do banco (só necessário em ambiente local/XAMPP, onde você tem
--- permissão para criar bancos via SQL). Em hospedagem compartilhada
--- (InfinityFree, Hostinger etc.) geralmente NÃO é permitido criar o banco
--- assim — nesses casos, crie o banco pelo painel/cPanel primeiro e comente
--- ou apague as duas linhas abaixo antes de rodar o restante do script.
+-- Crie o banco no provedor antes de aplicar este schema e conecte-se a ele.
+-- O script não troca de banco, para evitar criar tabelas no projeto errado.
 -- ----------------------------------------------------------------------------
-CREATE DATABASE IF NOT EXISTS smartfinance CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE smartfinance;
 
 -- ----------------------------------------------------------------------------
 -- users

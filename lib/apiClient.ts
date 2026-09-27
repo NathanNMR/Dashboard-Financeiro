@@ -3,7 +3,10 @@ import type { Bill, Budget, CategoryDef, CreditCard, Goal, Transaction } from ".
 // Cliente HTTP para a API PHP (backend/). A URL base vem de uma env var
 // definida em build-time — necessário porque o frontend é exportado como
 // site estático (output: "export") e não tem servidor Node por trás.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8099/api";
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "development" ? "http://localhost:8099/api" : ""))
+  .trim()
+  .replace(/\/+$/, "");
 
 export class ApiError extends Error {
   status: number;
@@ -20,14 +23,23 @@ interface RequestOptions {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  if (!API_BASE_URL || !/^https?:\/\//i.test(API_BASE_URL)) {
+    throw new ApiError("A API ainda não foi configurada. Defina NEXT_PUBLIC_API_URL na hospedagem e publique o site novamente.", 0);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+    });
+  } catch {
+    throw new ApiError("Não foi possível conectar à API. Confira a URL da API, o estado do servidor e as origens permitidas (CORS).", 0);
+  }
 
   const data = await res.json().catch(() => ({}));
 
