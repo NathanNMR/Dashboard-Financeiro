@@ -2,6 +2,29 @@
 
 O Netlify hospeda o frontend estático em `out/`. O cadastro e o login precisam da API PHP e do MySQL; publicar só o frontend não cria usuários.
 
+## Valores para esta implantação
+
+O banco `smartfinance` já foi criado no serviço Aiven `jurassihealth-mysql`. Ele compartilha a capacidade gratuita de 1 GB com `clinica_jurassihealth` e pode desligar após inatividade. A conexão do SmartFinance usa outro banco e um usuário SQL limitado a ele.
+
+No Render, crie um **Web Service** de `NathanNMR/Dashboard-Financeiro`, branch `main`, runtime **Docker**, plano **Free**, nome `smartfinance-api`, Dockerfile na raiz e health check `/api/health.php`. O Apache escuta na porta 10000.
+
+| Variável Render | Valor |
+| --- | --- |
+| `DB_HOST` | `jurassihealth-mysql-nathannmr.d.aivencloud.com` |
+| `DB_PORT` | `20110` |
+| `DB_NAME` | `smartfinance` |
+| `DB_USER` | `smartfinance_app` |
+| `DB_PASSWORD` | Gere uma senha longa no Render e guarde-a lá. |
+| `DB_MIGRATE_USER` | `avnadmin` (somente na primeira implantação) |
+| `DB_MIGRATE_PASSWORD` | Senha de `avnadmin` na Aiven (somente na primeira implantação) |
+| `DB_SSL_CA_PEM` | Certificado CA completo em Aiven → serviço → Overview → Connection information. |
+| `RUN_DB_MIGRATION` | `1` na primeira implantação; depois `0`. |
+| `JWT_SECRET` | Gere um valor aleatório com pelo menos 32 caracteres no Render. |
+| `ALLOWED_ORIGINS` | `https://nmrfinance.netlify.app` |
+| `FRONTEND_URL` | `https://nmrfinance.netlify.app` |
+
+Não coloque senhas no GitHub ou em mensagens. Depois do primeiro health check `ok`, retire `DB_MIGRATE_USER` e `DB_MIGRATE_PASSWORD`, altere `RUN_DB_MIGRATION` para `0` e salve/republique o serviço. O usuário `smartfinance_app` já terá sido criado no banco com acesso apenas a `smartfinance`.
+
 1. Prepare um banco MySQL acessível pela API. O banco deve existir antes da migração; o script usa o banco definido em `DB_NAME`. Não coloque credenciais no GitHub.
 2. No Render, crie o serviço Docker da API usando este repositório, `Dockerfile` na raiz, e configure `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (usuário exclusivo da aplicação), `JWT_SECRET` (pelo menos 32 caracteres), `ALLOWED_ORIGINS` e `FRONTEND_URL`. Para Aiven, cole o certificado CA completo em `DB_SSL_CA_PEM`; a conexão verificará o certificado TLS. Defina `ALLOWED_ORIGINS` com a URL exata do site Netlify, por exemplo `https://nmrfinance.netlify.app`, sem barra final.
 3. Na primeira publicação, configure `DB_MIGRATE_USER` e `DB_MIGRATE_PASSWORD` com o usuário administrador do serviço MySQL e `RUN_DB_MIGRATION=1`. O startup cria as tabelas e o usuário da aplicação com permissões apenas em `DB_NAME`. Depois que o health check passar, altere `RUN_DB_MIGRATION=0`, remova as duas variáveis administrativas e publique novamente. Mantenha `DB_USER` e `DB_PASSWORD` como as credenciais exclusivas da aplicação.
