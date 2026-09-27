@@ -2,43 +2,34 @@ services:
   - type: web
     name: smartfinance-api
     runtime: docker
+    plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health.php
     autoDeployTrigger: commit
     envVars:
       - key: DB_HOST
-        sync: false
+        value: jurassihealth-mysql-nathannmr.d.aivencloud.com
       - key: DB_PORT
-        value: "3306"
+        value: "20110"
       - key: DB_NAME
-        sync: false
+        value: smartfinance
       - key: DB_USER
-        sync: false
+        value: smartfinance_app
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSL_CA_PEM
         sync: false
       - key: DB_MIGRATE_USER
-        sync: false
+        value: avnadmin
       - key: DB_MIGRATE_PASSWORD
         sync: false
       - key: RUN_DB_MIGRATION
-        value: "0"
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_TTL_SECONDS
         value: "86400"
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://nmrfinance.netlify.app
       - key: FRONTEND_URL
-        sync: false
-
-  - type: web
-    name: smartfinance
-    runtime: static
-    buildCommand: npm ci && npm run typecheck && npm run build
-    staticPublishPath: ./out
-    autoDeployTrigger: commit
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: https://nmrfinance.netlify.app
