@@ -84,3 +84,21 @@ export interface Goal {
   deadline?: string;
   createdAt: string;
 }
+
+export interface ShoppingItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unitPrice: number | null;
+  checked: boolean;
+}
+
+export interface ShoppingList {
+  id: string;
+  title: string;
+  budget: number | null;
+  paidAmount: number | null;
+  completedAt: string | null;
+  recordedTransactionId: string | null;
+  items: ShoppingItem[];
+}
