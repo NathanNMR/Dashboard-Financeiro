@@ -4,6 +4,7 @@ import { useState } from "react";
 import { generateId, toLocalISODate } from "@/lib/finance";
 import { roundMoney } from "@/lib/money";
 import { ShoppingList } from "@/lib/types";
+import { CategoryOptions } from "./CategoryOptions";
 
 const brl = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 const moneyInput = (value: string): number | null => {
@@ -16,7 +17,7 @@ interface Props {
   lists: ShoppingList[];
   onChange: (lists: ShoppingList[]) => void;
   onRemove: (list: ShoppingList) => void;
-  onRecord: (list: ShoppingList) => void;
+  onRecord: (list: ShoppingList, category: string) => void;
   status: "loading" | "idle" | "saving" | "error";
   error: string | null;
   onRetry: () => void;
@@ -27,6 +28,7 @@ export function ShoppingLists({ lists, onChange, onRemove, onRecord, status, err
   const [budget, setBudget] = useState("");
   const [newItems, setNewItems] = useState<Record<string, string>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Record<string, string>>({});
 
   const update = (id: string, change: (list: ShoppingList) => ShoppingList) =>
     onChange(lists.map((list) => list.id === id ? change(list) : list));
@@ -142,8 +144,16 @@ export function ShoppingLists({ lists, onChange, onRemove, onRecord, status, err
                     onChange={(e) => update(list.id, (prev) => ({ ...prev, paidAmount: moneyInput(e.target.value), completedAt: e.target.value === "" ? null : prev.completedAt ?? toLocalISODate() }))}
                     className="mt-1 block w-44 rounded-lg border border-slate-700 bg-slate-950 p-2 text-slate-100 disabled:opacity-50" />
                 </label>
-                {list.paidAmount !== null && !list.recordedTransactionId && <button type="button" onClick={() => onRecord(list)}
-                  className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white">Lançar despesa no extrato</button>}
+                {list.paidAmount !== null && !list.recordedTransactionId && <>
+                  <label className="text-sm text-slate-300">Categoria da despesa
+                    <select value={categories[list.id] ?? "Alimentação"} onChange={(e) => setCategories((prev) => ({ ...prev, [list.id]: e.target.value }))}
+                      className="mt-1 block rounded-lg border border-slate-700 bg-slate-950 p-2 text-slate-100">
+                      <CategoryOptions type="expense" />
+                    </select>
+                  </label>
+                  <button type="button" onClick={() => onRecord(list, categories[list.id] ?? "Alimentação")}
+                    className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white">Lançar despesa no extrato</button>
+                </>}
                 {list.recordedTransactionId && <p className="text-sm text-emerald-400">Despesa lançada no extrato. Ajustes posteriores devem ser feitos na transação.</p>}
               </div>
             </div>}
