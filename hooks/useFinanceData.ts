@@ -23,6 +23,7 @@ export interface FinanceDataState {
   isHydrated: boolean;
   syncStatus: SyncStatus;
   syncError: string | null;
+  retryLoad: () => void;
 }
 
 const emptySnapshot = (): FinanceSnapshot => ({
@@ -59,6 +60,7 @@ export function useFinanceData(): FinanceDataState {
   const [isHydrated, setIsHydrated] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("loading");
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const loadGenerationRef = useRef(0);
   const skipNextSaveRef = useRef(false);
@@ -110,11 +112,13 @@ export function useFinanceData(): FinanceDataState {
       })
       .catch((error) => {
         if (generation !== loadGenerationRef.current) return;
-        setIsHydrated(true);
+        // Sem leitura confirmada, nunca permita salvar um snapshot vazio:
+        // um erro temporário de rede poderia apagar dados já persistidos.
+        setIsHydrated(false);
         setSyncStatus("error");
         setSyncError(error instanceof Error ? error.message : "Não foi possível carregar os dados financeiros.");
       });
-  }, [token, currentAccount?.id]);
+  }, [token, currentAccount?.id, loadAttempt]);
 
   useEffect(() => {
     if (!isHydrated || !token || !currentAccount) return;
@@ -185,5 +189,6 @@ export function useFinanceData(): FinanceDataState {
     isHydrated,
     syncStatus,
     syncError,
+    retryLoad: () => setLoadAttempt((n) => n + 1),
   };
 }
