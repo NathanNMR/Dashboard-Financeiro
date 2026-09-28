@@ -45,10 +45,11 @@ import { FinancialHealth } from "@/components/FinancialHealth";
 import { Section, SectionTabs } from "@/components/SectionTabs";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { ShoppingLists } from "@/components/ShoppingLists";
+import { OpenFinance } from "@/components/OpenFinance";
 
 function Dashboard() {
   const { notify } = useToast();
-  const { currentAccount } = useAuth();
+  const { currentAccount, token } = useAuth();
   const { confirm, dialog } = useConfirmDialog();
 
   const {
@@ -610,6 +611,13 @@ function Dashboard() {
         {section === "shopping" && <ShoppingLists lists={shoppingLists} onChange={setShoppingLists}
           onRemove={handleRemoveShoppingList} onRecord={handleRecordShoppingExpense}
           status={shoppingStatus} error={shoppingError} onRetry={reloadShopping} />}
+
+        {section === "openfinance" && currentAccount && token && <OpenFinance
+          accountId={currentAccount.id} token={token} transactions={transactions}
+          onImport={(items) => setTransactions((previous) => {
+            const existing = new Set(previous.map((item) => item.id));
+            return [...items.filter((item) => !existing.has(item.id)), ...previous];
+          })} disabled={!financeHydrated || syncStatus === "saving"} />}
 
         {section === "cards" && (
           <CreditCardsManager cards={cards} transactions={transactions} onAddCard={handleAddCard} onRemoveCard={handleRemoveCard} />

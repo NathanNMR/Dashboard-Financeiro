@@ -120,6 +120,15 @@ export const api = {
     request<{ success: true }>("/shopping-lists.php", {
       method: "PUT", token, body: { account_id: accountId, lists },
     }),
+
+  openFinanceToken: (token: string, accountId: string) =>
+    request<{ connectToken: string }>("/open-finance.php", { method: "POST", token, body: { account_id: accountId, action: "token" } }),
+  openFinanceAttach: (token: string, accountId: string, itemId: string) =>
+    request<{ success: true }>("/open-finance.php", { method: "POST", token, body: { account_id: accountId, action: "attach", item_id: itemId } }),
+  openFinanceList: (token: string, accountId: string) =>
+    request<{ connections: { item_id: string; created_at: string }[] }>(`/open-finance.php?action=list&account_id=${encodeURIComponent(accountId)}`, { token }),
+  openFinancePreview: (token: string, accountId: string, itemId: string) =>
+    request<{ transactions: Transaction[] }>(`/open-finance.php?action=preview&account_id=${encodeURIComponent(accountId)}&item_id=${encodeURIComponent(itemId)}`, { token }),
 };
 
 export { API_BASE_URL };
