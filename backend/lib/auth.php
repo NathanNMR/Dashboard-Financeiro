@@ -9,6 +9,14 @@
 function require_auth(): array
 {
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+    if ($header === '' && function_exists('getallheaders')) {
+        foreach (getallheaders() as $name => $value) {
+            if (strcasecmp($name, 'Authorization') === 0) {
+                $header = $value;
+                break;
+            }
+        }
+    }
     if (!preg_match('/^Bearer\s+(.+)$/i', $header, $matches)) {
         json_error('Não autenticado. Envie o token no header Authorization: Bearer <token>.', 401);
     }
