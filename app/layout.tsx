@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import Script from "next/script";
+import { ThemeInit } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "SmartFinance",
@@ -29,8 +31,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-BR" className="h-full antialiased dark">
       <body className="min-h-full flex flex-col bg-slate-950 font-sans">
+        <ThemeInit />
         <ServiceWorkerRegister />
         {children}
+        <Script src="https://vlibras.gov.br/app/vlibras-plugin.js" strategy="lazyOnload" />
       </body>
     </html>
   );
