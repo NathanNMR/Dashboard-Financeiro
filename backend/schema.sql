@@ -235,3 +235,19 @@ CREATE TABLE IF NOT EXISTS categories (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- Listas de compras pertencem a uma conta, sem misturar dados de usuários.
+-- A migração é reexecutável; listas e itens existentes são preservados.
+CREATE TABLE IF NOT EXISTS shopping_lists (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  account_id CHAR(36) NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  budget DECIMAL(14,2) NULL,
+  paid_amount DECIMAL(14,2) NULL,
+  completed_at DATE NULL,
+  recorded_transaction_id CHAR(36) NULL,
+  items_json JSON NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_shopping_account (account_id),
+  CONSTRAINT fk_shopping_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

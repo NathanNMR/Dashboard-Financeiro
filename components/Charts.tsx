@@ -22,7 +22,7 @@ import { currentMonthKey, formatCurrency } from "@/lib/finance";
 import { EmptyState } from "./EmptyState";
 import { MonthSwitcher } from "./MonthSwitcher";
 
-const tooltipStyle = { backgroundColor: "#0f172a", borderColor: "#334155", color: "#f8fafc" };
+const tooltipStyle = { backgroundColor: "var(--chart-tooltip-bg)", borderColor: "var(--chart-grid)", color: "var(--chart-tooltip-text)" };
 
 interface MonthlyDatum {
   month: string;
@@ -40,9 +40,9 @@ export function CashFlowChart({ data }: { data: MonthlyDatum[] }) {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="month" stroke="#64748b" />
-              <YAxis stroke="#64748b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="month" stroke="var(--chart-axis)" />
+              <YAxis stroke="var(--chart-axis)" />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend />
               <Bar dataKey="income" name="Receitas" fill="#34d399" radius={[4, 4, 0, 0]} />
@@ -75,9 +75,9 @@ export function ExpenseProjectionChart({ data }: { data: ProjectedDatum[] }) {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="month" stroke="#64748b" />
-              <YAxis stroke="#64748b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+              <XAxis dataKey="month" stroke="var(--chart-axis)" />
+              <YAxis stroke="var(--chart-axis)" />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend />
               <Area type="monotone" dataKey="expense" name="Despesa Real" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.2} />

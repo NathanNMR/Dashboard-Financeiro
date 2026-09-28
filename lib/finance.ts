@@ -39,9 +39,10 @@ export function generateRecurringOccurrences(
 /** Gera um id único e estável, com fallback para navegadores sem crypto.randomUUID */
 export function generateId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
+    // IDs são persistidos em colunas CHAR(36) no MySQL.
+    return crypto.randomUUID();
   }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`.slice(0, 36);
 }
 
 /** Formata um valor monetário em Real (BRL), centralizando toda formatação do app */

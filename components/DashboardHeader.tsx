@@ -1,4 +1,5 @@
 import { ChangeEvent, ReactNode } from "react";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface DashboardHeaderProps {
   onImportCSV: (e: ChangeEvent<HTMLInputElement>) => void;
@@ -22,6 +23,7 @@ export function DashboardHeader({ onImportCSV, onExportImage, onExportCSV, onOpe
       </div>
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
         {accountSwitcher}
+        <ThemeToggle />
         <button
           onClick={onOpenTutorial}
           className="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-1.5"

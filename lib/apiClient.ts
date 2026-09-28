@@ -1,4 +1,5 @@
 import type { Bill, Budget, CategoryDef, CreditCard, Goal, Transaction } from "./types";
+import type { ShoppingList } from "./types";
 
 // Cliente HTTP para a API PHP (backend/). A URL base vem de uma env var
 // definida em build-time — necessário porque o frontend é exportado como
@@ -110,6 +111,14 @@ export const api = {
       method: "PUT",
       token,
       body: { account_id: accountId, snapshot },
+    }),
+
+  getShoppingLists: (token: string, accountId: string) =>
+    request<{ lists: ShoppingList[] }>(`/shopping-lists.php?account_id=${encodeURIComponent(accountId)}`, { token }),
+
+  saveShoppingLists: (token: string, accountId: string, lists: ShoppingList[]) =>
+    request<{ success: true }>("/shopping-lists.php", {
+      method: "PUT", token, body: { account_id: accountId, lists },
     }),
 };
 
