@@ -1,175 +1,65 @@
 # SmartFinance — Dashboard Financeiro
 
-Dashboard de controle financeiro pessoal desenvolvido com **Next.js, React, TypeScript, Tailwind CSS e Recharts**.
+Aplicativo de controle financeiro pessoal e de equipes com **Next.js 16, React 19, TypeScript, Tailwind CSS 4, PHP 8.3 e MySQL**.
 
-O projeto permite registrar receitas e despesas, acompanhar contas, definir limites de gastos, visualizar gráficos e estimar despesas futuras. A versão atual mantém os dados no navegador com `localStorage`, mas a estrutura está preparada para uma futura API e banco de dados.
+**Site:** [nmrfinance.netlify.app](https://nmrfinance.netlify.app/)
 
-## ✨ Funcionalidades
+O frontend está no Netlify, a API PHP está no Render e o MySQL está no Aiven. Cada conta financeira possui seus próprios dados; cadastro e login usam autenticação com token. O Netlify publica somente os arquivos estáticos gerados pelo Next.js.
 
-- 📊 Resumo de receitas, despesas e saldo
-- 💳 Cadastro e edição de transações
-- 🔁 Transações recorrentes mensais e anuais
-- 🧾 Contas a pagar e rendas a receber
-- 📅 Navegação de contas por mês
-- 💰 Cálculo de juros e multa para contas atrasadas
-- 🎯 Metas de gastos por categoria
-- 📈 Gráfico de fluxo de caixa
-- 🥧 Distribuição de despesas por categoria
-- 🔮 Projeção de despesas com regressão linear
-- 📥 Importação de CSV
-- 📤 Exportação de transações para CSV
-- 🖼️ Exportação do resumo para imagem
-- 🔔 Alertas e confirmações para operações importantes
-- 📱 Interface responsiva
-- ♿ Componentes com foco em acessibilidade
+## Funcionalidades
 
-## 🛠️ Tecnologias
+- Receitas, despesas, extrato, parcelamentos e lançamentos recorrentes.
+- Contas a pagar e rendas a receber, com juros e multa.
+- Orçamentos por categoria, cartões de crédito, metas e projeções.
+- Relatórios, gráficos, importação e exportação CSV e imagem.
+- Listas de compras com orçamento opcional, itens, quantidades e preços unitários. O total é calculado automaticamente; o valor pago no caixa registra descontos ou diferenças. A compra pode ser lançada como despesa no extrato.
+- Modo claro e escuro, com preferência salva no navegador.
+- Widget [VLibras](https://www.gov.br/governodigital/pt-br/acessibilidade-e-usuario/vlibras) para tradução automática de conteúdo em português para Libras. A tradução depende do serviço externo e pode ter limitações.
+- Interface responsiva e aplicativo instalável (PWA).
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Recharts
-- LocalStorage para persistência local
+## Desenvolvimento local
 
-## 🚀 Executando localmente
-
-Pré-requisitos:
-
-- Node.js 20 ou superior
-- npm
-
-Instalação:
+Requisitos: Node.js 20+, npm, PHP 8.3 com `pdo_mysql` e MySQL. As instruções completas da API e do esquema estão em [backend/README.md](backend/README.md).
 
 ```bash
-npm install
+npm ci
+NEXT_PUBLIC_API_URL=http://localhost:8099/api npm run dev
 ```
 
-Desenvolvimento:
+Abra `http://localhost:3000`. Configure a API PHP e o banco conforme a documentação do backend. Para verificar o frontend:
 
 ```bash
-npm run dev
-```
-
-Depois abra:
-
-```text
-http://localhost:3000
-```
-
-Build de produção:
-
-```bash
+npm run typecheck
 npm run build
-npm start
 ```
 
-## 📁 Estrutura
+A variável `NEXT_PUBLIC_API_URL` é incorporada durante o build estático: alterar seu valor no Netlify exige novo deploy.
 
-```text
-app/
-  page.tsx              # Composição principal do dashboard
-  globals.css           # Estilos globais
+## Publicação e atualizações do banco
 
-components/
-  BillsManager.tsx      # Contas e compromissos
-  BudgetGoals.tsx       # Metas de gastos
-  Charts.tsx             # Gráficos
-  TransactionForm.tsx   # Cadastro/edição
-  TransactionsTable.tsx # Extrato
-  ...
+Veja [NETLIFY.md](NETLIFY.md) para as etapas detalhadas do Netlify, Render e Aiven. A API usa o Dockerfile na raiz e o Blueprint `render.yaml`. Credenciais e certificado CA do banco são variáveis do Render; **não os adicione ao GitHub**.
 
-hooks/
-  useLocalStorage.ts    # Persistência local
+A lista de compras usa a nova tabela `shopping_lists`. Para atualizar uma instalação existente:
 
-lib/
-  constants.ts          # Categorias e dados iniciais
-  csv.ts                # Importação robusta de CSV
-  finance.ts            # Regras e cálculos financeiros
-  imageExport.ts        # Exportação de imagem
-  money.ts              # Operações seguras com centavos
-  types.ts              # Tipos TypeScript
-```
+1. No Render, configure temporariamente `DB_MIGRATE_USER=avnadmin`, `DB_MIGRATE_PASSWORD` com a senha administrativa do Aiven e `RUN_DB_MIGRATION=1`.
+2. Faça um novo deploy da API. O script aplica `backend/schema.sql` de modo reexecutável, sem apagar compras, contas ou transações existentes.
+3. Confira o health check e os logs; depois altere `RUN_DB_MIGRATION=0`, remova as duas variáveis administrativas e publique novamente.
 
-## 📥 Formato de importação CSV
+Sem essa migração, apenas a nova seção **Compras** falhará ao carregar; as outras seções continuam com suas tabelas existentes. As listas são salvas no MySQL por conta, assim como os demais dados financeiros.
 
-A importação aceita CSV com `,` ou `;` e reconhece português e inglês para o tipo da transação.
+## Estrutura
 
-Exemplo brasileiro:
+| Caminho | Função |
+| --- | --- |
+| `app/`, `components/` | Interface e visualizações |
+| `hooks/` | Autenticação, dados financeiros e listas de compras |
+| `lib/` | Tipos, cálculos, CSV e cliente da API |
+| `backend/api/` | Endpoints PHP autenticados |
+| `backend/schema.sql` | Tabelas MySQL e migração reexecutável |
+| `render.yaml`, `netlify.toml` | Configuração de publicação |
 
-```csv
-data;descricao;valor;tipo
-2026-08-01;Salário;5000,00;receita
-2026-08-03;Supermercado;350,90;despesa
-2026-08-05;Internet;120,00;despesa
-```
+## Segurança e limites
 
-Também são aceitos:
+A API confere o acesso do usuário à conta antes de ler ou alterar os dados. Os dados financeiros e as listas de compras são armazenados no MySQL; o navegador guarda o token de sessão e preferências de interface. A sincronização usa atualização do conjunto de listas por conta: edições simultâneas da mesma lista em dois dispositivos podem sobrescrever umas às outras.
 
-- `income` / `expense`
-- `receita` / `despesa`
-- `entrada` / `saída`
-- valores como `1250.50` e `1.250,50`
-- arquivos com BOM UTF-8
-- campos entre aspas
-
-Linhas inválidas são ignoradas e informadas ao usuário.
-
-## 💾 Persistência atual
-
-A aplicação atualmente usa `localStorage`. Isso é adequado para desenvolvimento, demonstração e uso pessoal em um único navegador, mas não é a arquitetura ideal para um sistema financeiro multi-dispositivo.
-
-### Próxima evolução recomendada
-
-```text
-Next.js
-   ↓
-API / Server Actions
-   ↓
-Autenticação
-   ↓
-Banco de dados
-   ├── usuários
-   ├── transações
-   ├── contas
-   ├── categorias
-   ├── orçamentos
-   └── metas
-```
-
-Essa evolução permitirá sincronização entre dispositivos, login, backup e persistência no servidor.
-
-## 🔐 Segurança
-
-Como esta versão usa armazenamento local, **não trate o `localStorage` como armazenamento seguro para informações sensíveis**.
-
-Em uma versão com backend, recomenda-se:
-
-- autenticação baseada em sessão;
-- autorização por usuário;
-- validação no servidor;
-- queries parametrizadas/ORM;
-- proteção contra CSRF quando aplicável;
-- variáveis de ambiente para credenciais;
-- backup do banco;
-- logs sem dados financeiros desnecessários.
-
-## 📌 Roadmap
-
-- [ ] API backend
-- [ ] Banco MySQL/PostgreSQL
-- [ ] Cadastro e login
-- [ ] Sincronização entre dispositivos
-- [ ] Categorias personalizadas
-- [ ] Exportação PDF
-- [ ] Relatórios mensais
-- [ ] Comparação entre períodos
-- [ ] Backup e restauração
-- [ ] Testes automatizados
-- [ ] Deploy de produção
-
-## 👨‍💻 Projeto
-
-**SmartFinance — Dashboard Financeiro**
-
-Projeto desenvolvido para estudo e portfólio, com foco em React/Next.js, TypeScript, componentes reutilizáveis e regras de negócio financeiras.
+Projeto desenvolvido para estudo e portfólio por [Nathan Moreira Ramos](https://github.com/NathanNMR).
