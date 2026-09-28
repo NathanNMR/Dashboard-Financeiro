@@ -201,11 +201,12 @@ function Dashboard() {
     if (ok) setShoppingLists((prev) => prev.filter((item) => item.id !== list.id));
   };
 
-  const handleRecordShoppingExpense = (list: ShoppingList) => {
+  const handleRecordShoppingExpense = (list: ShoppingList, category: string) => {
     if (list.paidAmount === null || list.recordedTransactionId) return;
     const id = generateId("shop-tx");
+    const amount = list.paidAmount;
     setTransactions((prev) => [{ id, date: list.completedAt ?? toLocalISODate(), description: `Compra: ${list.title}`,
-      amount: list.paidAmount!, category: "Alimentação", type: "expense" }, ...prev]);
+      amount, category, type: "expense" }, ...prev]);
     setShoppingLists((prev) => prev.map((item) => item.id === list.id ? { ...item, recordedTransactionId: id } : item));
     notify("Compra lançada como despesa no extrato.", "success");
   };
