@@ -34,8 +34,20 @@ try {
     // cada instrução separadamente.
     $withoutComments = preg_replace('/^\s*--[^\r\n]*/m', '', $sql);
     foreach (explode(';', $withoutComments) as $statement) {
-        if (trim($statement) !== '') {
-            $pdo->exec($statement);
+        if (trim($statement) === '') continue;
+
+        // SELECT e EXECUTE podem produzir linhas mesmo em um schema de DDL.
+        // exec() deixa esse resultado pendente no MySQL e a próxima instrução
+        // falha com SQLSTATE 2014. Consuma todos os resultados e feche o cursor.
+        $result = $pdo->query($statement);
+        try {
+            do {
+                if ($result->columnCount() > 0) {
+                    $result->fetchAll();
+                }
+            } while ($result->nextRowset());
+        } finally {
+            $result->closeCursor();
         }
     }
     $userLiteral = $pdo->quote($appUser);
