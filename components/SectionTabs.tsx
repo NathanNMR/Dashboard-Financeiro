@@ -1,6 +1,6 @@
 "use client";
 
-export type Section = "dashboard" | "cards" | "categories" | "goals" | "reports" | "health" | "team";
+export type Section = "dashboard" | "shopping" | "cards" | "categories" | "goals" | "reports" | "health" | "team";
 
 interface SectionTabsProps {
   active: Section;
@@ -10,6 +10,7 @@ interface SectionTabsProps {
 
 const BASE_SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: "🏠" },
+  { id: "shopping", label: "Compras", icon: "🛒" },
   { id: "health", label: "Saúde Financeira", icon: "🩺" },
   { id: "cards", label: "Cartões", icon: "💳" },
   { id: "goals", label: "Metas", icon: "🎯" },
