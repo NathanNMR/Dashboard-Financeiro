@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bill, Budget, CategoryDef, CreditCard, Goal, Recurrence, Transaction } from "@/lib/types";
+import { Bill, Budget, CategoryDef, CreditCard, Goal, Recurrence, ShoppingList, Transaction } from "@/lib/types";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useFinanceData } from "@/hooks/useFinanceData";
+import { useShoppingLists } from "@/hooks/useShoppingLists";
 import {
   addOneMonth,
   calculateBillCurrentAmount,
@@ -43,6 +44,7 @@ import { ReportsPage } from "@/components/ReportsPage";
 import { FinancialHealth } from "@/components/FinancialHealth";
 import { Section, SectionTabs } from "@/components/SectionTabs";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
+import { ShoppingLists } from "@/components/ShoppingLists";
 
 function Dashboard() {
   const { notify } = useToast();
@@ -65,6 +67,7 @@ function Dashboard() {
     syncStatus,
     syncError,
   } = useFinanceData();
+  const { lists: shoppingLists, setLists: setShoppingLists, status: shoppingStatus, error: shoppingError, reload: reloadShopping } = useShoppingLists();
 
   const [section, setSection] = useState<Section>("dashboard");
   const [filterCategory, setFilterCategory] = useState("All");
@@ -187,6 +190,24 @@ function Dashboard() {
     setTransactions([]);
     setEditingId(null);
     notify("Todas as transações foram apagadas.", "info");
+  };
+
+  const handleRemoveShoppingList = async (list: ShoppingList) => {
+    const ok = await confirm({
+      title: "Excluir lista de compras?",
+      description: `A lista "${list.title}" será removida. Uma despesa já lançada no extrato permanecerá lá.`,
+      confirmLabel: "Excluir",
+    });
+    if (ok) setShoppingLists((prev) => prev.filter((item) => item.id !== list.id));
+  };
+
+  const handleRecordShoppingExpense = (list: ShoppingList) => {
+    if (list.paidAmount === null || list.recordedTransactionId) return;
+    const id = generateId("shop-tx");
+    setTransactions((prev) => [{ id, date: list.completedAt ?? toLocalISODate(), description: `Compra: ${list.title}`,
+      amount: list.paidAmount!, category: "Alimentação", type: "expense" }, ...prev]);
+    setShoppingLists((prev) => prev.map((item) => item.id === list.id ? { ...item, recordedTransactionId: id } : item));
+    notify("Compra lançada como despesa no extrato.", "success");
   };
 
   // --- Contas / Compromissos ---
@@ -570,6 +591,10 @@ function Dashboard() {
         {section === "health" && (
           <FinancialHealth transactions={transactions} budgets={budgets} cards={cards} goals={goals} monthKey={currentMonthKey()} />
         )}
+
+        {section === "shopping" && <ShoppingLists lists={shoppingLists} onChange={setShoppingLists}
+          onRemove={handleRemoveShoppingList} onRecord={handleRecordShoppingExpense}
+          status={shoppingStatus} error={shoppingError} onRetry={reloadShopping} />}
 
         {section === "cards" && (
           <CreditCardsManager cards={cards} transactions={transactions} onAddCard={handleAddCard} onRemoveCard={handleRemoveCard} />
