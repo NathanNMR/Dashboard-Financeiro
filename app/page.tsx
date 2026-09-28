@@ -66,6 +66,7 @@ function Dashboard() {
     isHydrated: financeHydrated,
     syncStatus,
     syncError,
+    retryLoad: retryFinanceLoad,
   } = useFinanceData();
   const { lists: shoppingLists, setLists: setShoppingLists, status: shoppingStatus, error: shoppingError, reload: reloadShopping } = useShoppingLists();
 
@@ -510,6 +511,19 @@ function Dashboard() {
     }
     return result;
   }, [monthlyData, recurringMonthlyExpenses]);
+
+  if (!financeHydrated && syncStatus === "error") {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+        <div role="alert" className="max-w-md rounded-xl border border-rose-800 bg-slate-900 p-6 space-y-4">
+          <h1 className="text-lg font-semibold">Não foi possível carregar seus dados</h1>
+          <p className="text-sm text-slate-300">{syncError}</p>
+          <p className="text-sm text-slate-400">Nenhuma alteração será salva até a conexão ser restabelecida.</p>
+          <button onClick={retryFinanceLoad} className="rounded-lg bg-cyan-600 px-4 py-2 text-white">Tentar novamente</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!financeHydrated || !tutorialHydrated) {
     return (
