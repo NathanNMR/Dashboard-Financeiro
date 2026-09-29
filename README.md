@@ -13,21 +13,11 @@ O frontend está no Netlify, a API PHP está no Render e o MySQL está no Aiven.
 - Orçamentos por categoria, cartões de crédito, metas e projeções.
 - Relatórios, gráficos, importação e exportação CSV e imagem.
 - Listas de compras com orçamento opcional, itens, quantidades e preços unitários. O total é calculado automaticamente; o valor pago no caixa registra descontos ou diferenças. A compra pode ser lançada como despesa no extrato.
-- Open Finance (Pluggy): conexão com consentimento no widget e importação manual de transações bancárias confirmadas em BRL, com IDs estáveis para evitar duplicatas. A disponibilidade de bancos depende do plano e da cobertura da Pluggy.
 - Modo claro e escuro, com preferência salva no navegador.
 - Widget [VLibras](https://www.gov.br/governodigital/pt-br/acessibilidade-e-usuario/vlibras) para tradução automática de conteúdo em português para Libras. A tradução depende do serviço externo e pode ter limitações.
 - Interface responsiva e aplicativo instalável (PWA).
 
 ## Desenvolvimento local
-
-### Configuração do Open Finance
-
-1. Crie credenciais de aplicação na [Pluggy](https://docs.pluggy.ai/en/docs/quickstart) e confirme que seu plano permite os bancos que deseja conectar. Sandbox e conexões reais dependem da conta do provedor.
-2. No serviço **API** do Render, configure `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET` como variáveis secretas. Nunca use `NEXT_PUBLIC_` para essas credenciais.
-3. Aplique a tabela `open_finance_connections` do `backend/schema.sql` no MySQL. Se já usa a migração automatizada, configure temporariamente `DB_MIGRATE_USER` e `DB_MIGRATE_PASSWORD` com o usuário administrador, `RUN_DB_MIGRATION=1`, publique, confira o log de sucesso e volte a `RUN_DB_MIGRATION=0` removendo as credenciais administrativas. Alternativamente, execute **somente** o `CREATE TABLE IF NOT EXISTS open_finance_connections` no console SQL do Aiven.
-4. Publique o frontend e a API a partir do mesmo commit. Na aba **Open Finance**, conecte um banco, aguarde o processamento, clique em **Buscar transações** e confira a contagem antes de **Importar**. A importação grava no extrato pelo fluxo normal de sincronização do dashboard.
-
-O widget cuida da autorização. A API guarda somente o ID da conexão e usa as credenciais da aplicação no servidor. Este primeiro estágio lê apenas contas bancárias em BRL e operações confirmadas; saldos, cartões, investimentos e sincronização em segundo plano ficam para uma próxima etapa. A importação inclui transferências entre contas próprias, que podem inflar receitas e despesas; revise antes de usar os totais. Para revogar o compartilhamento, use o aplicativo do banco ou da instituição receptora. Não conecte contas reais antes de verificar as condições de acesso e tratamento dos dados com a Pluggy.
 
 Requisitos: Node.js 20+, npm, PHP 8.3 com `pdo_mysql` e MySQL. As instruções completas da API e do esquema estão em [backend/README.md](backend/README.md).
 
