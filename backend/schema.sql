@@ -131,19 +131,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   CONSTRAINT fk_tx_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Conexões autorizadas pelo próprio usuário no widget Open Finance.
--- Não armazenamos senha bancária nem chave da API do provedor neste banco.
-CREATE TABLE IF NOT EXISTS open_finance_connections (
-  account_id CHAR(36) NOT NULL,
-  user_id CHAR(36) NOT NULL,
-  item_id CHAR(36) NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (item_id),
-  KEY idx_of_account_user (account_id, user_id),
-  CONSTRAINT fk_of_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_of_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- ----------------------------------------------------------------------------
 -- bills (contas/compromissos financeiros com vencimento, juros e multa)
 -- ----------------------------------------------------------------------------
